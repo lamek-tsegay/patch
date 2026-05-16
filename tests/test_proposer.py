@@ -207,3 +207,108 @@ def test_propose_fixes_weak_crypto(monkeypatch):
     }
 
     assert all(p.finding_id == finding.finding_id for p in proposals)
+
+
+_VULN_CMDI = (
+    "    result = subprocess.run(\n"
+    "        f\"ping -c 2 {hostname}\",\n"
+    "        shell=True,\n"
+    "        capture_output=True,\n"
+    "        text=True,\n"
+    "        timeout=10,\n"
+    "    )"
+)
+
+
+def _command_injection_finding() -> Finding:
+    return Finding(
+        finding_id=uuid4(),
+        severity=Severity.CRITICAL,
+        category=Category.COMMAND_INJECTION,
+        file="demo-repo/admin/diagnostics.py",
+        line_start=28,
+        line_end=34,
+        vulnerable_code=_VULN_CMDI,
+        description="User-supplied hostname is interpolated into a shell command run with shell=True, allowing arbitrary command chaining via ';', '&&', or backticks.",
+        exploit_path="POST /admin/diagnostics/ping with {\"hostname\": \"; rm -rf /\"} runs the appended command in the shell as the application user.",
+        cwe="CWE-78",
+        confidence=0.94,
+    )
+
+
+def _mock_client_for_command_injection() -> MockNemotronClient:
+    return MockNemotronClient(
+        responses={
+            "Strategy: subprocess_array_args": {
+                "title": "Pass the command as a list and disable shell",
+                "rationale": "Array-args form bypasses shell interpretation entirely, so metacharacters in hostname can't escape into a new command.",
+                "tradeoffs": "Requires splitting the command into tokens. Equivalent behavior on normal inputs; no shell features (pipes, redirects) — flag if the call site relied on them.",
+                "breaking_change_risk": "low",
+                "search_block": _VULN_CMDI,
+                "replace_block": (
+                    "    result = subprocess.run(\n"
+                    "        [\"ping\", \"-c\", \"2\", hostname],\n"
+                    "        shell=False,\n"
+                    "        capture_output=True,\n"
+                    "        text=True,\n"
+                    "        timeout=10,\n"
+                    "    )"
+                ),
+            },
+            "Strategy: shell_escape": {
+                "title": "Quote the hostname via shlex.quote before interpolation",
+                "rationale": "shlex.quote wraps the value safely for shell syntax, so injected metacharacters become literal.",
+                "tradeoffs": "Adds shlex import. Keeps shell=True so any future kwargs that depend on shell behavior keep working; correctness depends on shlex.quote handling the platform's shell.",
+                "breaking_change_risk": "low",
+                "search_block": _VULN_CMDI,
+                "replace_block": (
+                    "    import shlex\n"
+                    "    result = subprocess.run(\n"
+                    "        f\"ping -c 2 {shlex.quote(hostname)}\",\n"
+                    "        shell=True,\n"
+                    "        capture_output=True,\n"
+                    "        text=True,\n"
+                    "        timeout=10,\n"
+                    "    )"
+                ),
+            },
+            "Strategy: command_whitelist": {
+                "title": "Validate hostname against a strict pattern before subprocess",
+                "rationale": "An allowlist regex matching only RFC-1123 hostname characters rejects shell metacharacters before they ever reach the command.",
+                "tradeoffs": "Restricts hostnames to the regex grammar. Legitimate inputs outside the pattern (IDN, exotic formats) will be rejected.",
+                "breaking_change_risk": "medium",
+                "search_block": _VULN_CMDI,
+                "replace_block": (
+                    "    if not re.fullmatch(r\"[a-zA-Z0-9.-]{1,253}\", hostname):\n"
+                    "        raise ValueError(\"hostname must match [a-zA-Z0-9.-]{1,253}\")\n"
+                    "    result = subprocess.run(\n"
+                    "        f\"ping -c 2 {hostname}\",\n"
+                    "        shell=True,\n"
+                    "        capture_output=True,\n"
+                    "        text=True,\n"
+                    "        timeout=10,\n"
+                    "    )"
+                ),
+            },
+        }
+    )
+
+
+def test_propose_fixes_command_injection(monkeypatch):
+    monkeypatch.setenv("NIM_MODEL_SUPER", "mock-nemotron-super")
+    finding = _command_injection_finding()
+
+    proposals = propose_fixes(finding, _mock_client_for_command_injection())
+
+    assert len(proposals) == 3
+    assert [p.rank for p in proposals] == [1, 2, 3]
+
+    strategies = {p.strategy for p in proposals}
+    assert len(strategies) == 3
+    assert strategies == {
+        FixStrategy.SUBPROCESS_ARRAY_ARGS,
+        FixStrategy.SHELL_ESCAPE,
+        FixStrategy.COMMAND_WHITELIST,
+    }
+
+    assert all(p.finding_id == finding.finding_id for p in proposals)
