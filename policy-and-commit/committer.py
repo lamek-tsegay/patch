@@ -1,105 +1,107 @@
 import os
 from dotenv import load_dotenv
-from github import Github
+from github import Github, Auth
 from shared.schema import Finding
 from policy_and_commit.engine import PolicyEngine
 
 load_dotenv()
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_REPO = os.getenv("GITHUB_REPO", "lamek-tsegay/patch")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "patch-agent/demo-vulnerable-app")
 
 
-def verify_against_file(finding: Finding, repo) -> bool:
+def verify_against_file(finding: Finding, file_content: str) -> bool:
     """
     Anti-hallucination guard from schema.md.
-    Checks vulnerable_code actually exists in the file
-    at the exact lines specified.
+    Checks vulnerable_code actually exists in the file.
     """
-    try:
-        contents = repo.get_contents(finding.file)
-        file_lines = contents.decoded_content.decode("utf-8").splitlines()
-        actual_lines = "\n".join(
-            file_lines[finding.line_start - 1: finding.line_end]
-        )
-        return finding.vulnerable_code.strip() in actual_lines
-    except Exception as e:
-        print(f"[COMMIT] Verification failed: {e}")
-        return False
+    return finding.vulnerable_code.strip() in file_content
 
 
-def commit_fix(finding: Finding, fix_code: str) -> dict:
+def apply_patch(original: str, search: str, replace: str) -> str | None:
     """
-    Called after human approval is received.
-    Verifies the finding, commits the fix, opens a PR.
-    Returns a result dict with status and PR url.
+    Applies a search/replace patch to file content.
+    Returns None if search string not found.
+    """
+    if search not in original:
+        return None
+    return original.replace(search, replace, 1)
+
+
+def commit_fix(finding: Finding, proposal: dict) -> dict:
+    """
+    Called when a fix proposal arrives from Law's fix-proposer.
+    Checks policy — will always return blocked until human approves.
+    Emits policy events to dashboard.
     """
     engine = PolicyEngine()
 
-    # Step 1 — severity check
+    # Severity check
     engine.check_severity(finding)
 
-    # Step 2 — policy check for commit
+    # Policy check — will block until human approves
     commit_event = engine.check_can_commit(finding)
-    if not commit_event.allowed:
-        print(f"[COMMIT] Blocked by policy: {commit_event.reason}")
-        return {
-            "status": "blocked",
-            "reason": commit_event.reason,
-            "events": engine.get_events()
-        }
-
-    # Step 3 — policy check for PR
     pr_event = engine.check_can_open_pr(finding)
-    if not pr_event.allowed:
-        print(f"[COMMIT] PR blocked by policy: {pr_event.reason}")
-        return {
-            "status": "blocked",
-            "reason": pr_event.reason,
-            "events": engine.get_events()
-        }
 
     return {
-        "status": "blocked",
-        "reason": "Awaiting human approval",
+        "status": "awaiting_approval",
+        "finding_id": str(finding.finding_id),
+        "proposal_id": proposal.get("proposal_id"),
+        "message": "Awaiting human approval before any code changes.",
         "events": engine.get_events()
     }
 
 
-def commit_fix_approved(finding: Finding, fix_code: str) -> dict:
+def commit_fix_approved(finding: Finding, proposal: dict) -> dict:
     """
-    Called only after human clicks approve on dashboard.
-    Actually makes the git changes and opens the PR.
+    Called ONLY after human clicks approve on BK's dashboard.
+    Applies the patch, commits to a branch, opens a PR.
+    Returns pr_url and event log.
     """
     engine = PolicyEngine()
-
-    # Log the human approval
     engine.approve(finding)
 
     try:
-        g = Github(GITHUB_TOKEN)
+        auth = Auth.Token(GITHUB_TOKEN)
+        g = Github(auth=auth)
         repo = g.get_repo(GITHUB_REPO)
 
-        # Step 1 — verify finding is real
-        if not verify_against_file(finding, repo):
+        patches = proposal.get("patches", [])
+        if not patches:
             return {
                 "status": "error",
-                "reason": "Finding failed verification — vulnerable_code not found in file",
+                "reason": "No patches found in proposal",
                 "events": engine.get_events()
             }
 
-        # Step 2 — get current file
-        file_contents = repo.get_contents(finding.file)
+        # Use first patch for demo
+        patch = patches[0]
+        file_path = patch["file"]
+        search = patch["search"]
+        replace = patch["replace"]
+
+        # Step 1 — get current file
+        file_contents = repo.get_contents(file_path)
         original = file_contents.decoded_content.decode("utf-8")
 
-        # Step 3 — replace vulnerable lines with fix
-        lines = original.splitlines(keepends=True)
-        lines[finding.line_start - 1: finding.line_end] = [
-            fix_code + "\n"
-        ]
-        updated = "".join(lines)
+        # Step 2 — anti-hallucination guard
+        if not verify_against_file(finding, original):
+            return {
+                "status": "error",
+                "reason": "vulnerable_code not found in file — finding rejected",
+                "events": engine.get_events()
+            }
 
-        # Step 4 — create a new branch for this fix
+        # Step 3 — apply the patch
+        updated = apply_patch(original, search, replace)
+        if updated is None:
+            return {
+                "status": "error",
+                "reason": "Patch search string not found in file",
+                "events": engine.get_events()
+            }
+
+        # Step 4 — create branch
         branch_name = f"patch/fix-{str(finding.finding_id)[:8]}"
         base_sha = repo.get_branch("main").commit.sha
         repo.create_git_ref(
@@ -109,8 +111,8 @@ def commit_fix_approved(finding: Finding, fix_code: str) -> dict:
 
         # Step 5 — commit the fix
         repo.update_file(
-            path=finding.file,
-            message=f"fix({finding.category}): patch {finding.cwe} in {finding.file}",
+            path=file_path,
+            message=f"fix({finding.category}): patch {finding.cwe} in {file_path}",
             content=updated,
             sha=file_contents.sha,
             branch=branch_name
@@ -118,13 +120,15 @@ def commit_fix_approved(finding: Finding, fix_code: str) -> dict:
 
         # Step 6 — open pull request
         pr = repo.create_pull(
-            title=f"[Patch] {finding.severity.upper()} {finding.category} in {finding.file}",
+            title=f"[Patch] {finding.severity.upper()} {finding.category} in {file_path}",
             body=f"""## Security Fix — {finding.cwe}
 
 **Severity:** {finding.severity}
 **Category:** {finding.category}
-**File:** `{finding.file}` (lines {finding.line_start}–{finding.line_end})
+**File:** `{file_path}`
 **Finding ID:** {finding.finding_id}
+**Proposal ID:** {proposal.get('proposal_id')}
+**Strategy:** {proposal.get('strategy')}
 
 ### What was wrong
 {finding.description}
@@ -132,8 +136,11 @@ def commit_fix_approved(finding: Finding, fix_code: str) -> dict:
 ### How an attacker exploits it
 {finding.exploit_path}
 
-### What was changed
-Vulnerable code replaced with verified fix after human approval.
+### Fix applied
+{proposal.get('rationale')}
+
+### Tradeoffs
+{proposal.get('tradeoffs')}
 
 ---
 *Opened automatically by Patch after human approval.*
@@ -148,6 +155,8 @@ Vulnerable code replaced with verified fix after human approval.
             "status": "success",
             "pr_url": pr.html_url,
             "branch": branch_name,
+            "finding_id": str(finding.finding_id),
+            "proposal_id": proposal.get("proposal_id"),
             "events": engine.get_events()
         }
 
