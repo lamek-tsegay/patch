@@ -135,8 +135,8 @@ code {
 
 .hero {
   display: grid;
-  grid-template-columns: 1.12fr 0.88fr;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 40px;
   align-items: center;
   min-height: 560px;
   margin-bottom: 48px;
@@ -153,6 +153,7 @@ code {
   line-height: 0.9;
   letter-spacing: -0.07em;
   text-transform: lowercase;
+  max-width: 760px;
 }
 
 .hero-text > p:last-of-type {
@@ -321,14 +322,16 @@ code {
 .hero-robot {
   display: grid;
   place-items: center;
+  justify-self: end;
 }
 
 .robot {
   position: relative;
-  width: 320px;
-  height: 460px;
+  width: 300px;
+  height: 430px;
   margin: 0 auto;
   filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.45));
+  transform: translateY(8px);
 }
 
 .robot-head,
@@ -1092,7 +1095,7 @@ code {
   gap: 10px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 860px) {
   .app-shell {
     width: min(100vw - 28px, 1160px);
   }
@@ -1111,6 +1114,14 @@ code {
   .hero-actions,
   .action-row {
     justify-content: center;
+  }
+
+  .hero-robot {
+    justify-self: center;
+  }
+
+  .robot {
+    transform: none;
   }
 
   .stats-grid {
