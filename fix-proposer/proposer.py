@@ -10,11 +10,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from shared.db import insert_proposals
 from shared.nemotron_client import NemotronClient
 from shared.schema import (
     BreakingChangeRisk,
@@ -111,8 +113,14 @@ def propose_fixes(
     *,
     model: str | None = None,
     repo_root: str | Path = ".",
+    db_conn: sqlite3.Connection | None = None,
 ) -> list[FixProposal]:
-    """Produce three ranked FixProposal objects for one Finding."""
+    """Produce three ranked FixProposal objects for one Finding.
+
+    If `db_conn` is provided, the proposals are persisted to the
+    `fix_proposals` table after the full list is built — partial state is
+    never written on mid-loop failure.
+    """
     # Fail fast on unsupported category before any env/config checks.
     slots = get_slots(finding.category)
 
@@ -133,6 +141,10 @@ def propose_fixes(
             schema=_OUTPUT_SCHEMA,
         )
         proposals.append(_parse_proposal(raw, finding, slot, rank))
+
+    if db_conn is not None:
+        insert_proposals(db_conn, proposals)
+
     return proposals
 
 
