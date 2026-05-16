@@ -33,6 +33,7 @@ class NemotronClient(Protocol):
         user: str,
         schema: dict[str, Any] | None = None,
         max_tokens: int = 2048,
+        detailed_thinking: bool = False,
     ) -> dict[str, Any]: ...
 
 
@@ -52,7 +53,19 @@ class NIMNemotronClient:
         user: str,
         schema: dict[str, Any] | None = None,
         max_tokens: int = 2048,
+        detailed_thinking: bool = False,
     ) -> dict[str, Any]:
+        """Call NIM with a system+user prompt and parse the JSON response.
+
+        The `detailed_thinking` flag is opt-in. When True, the legacy
+        "detailed thinking on\\n\\n" prefix is prepended to the system
+        message — this was needed when NVIDIA's API surfaced reasoning only
+        inline. The API now exposes reasoning in dedicated `message.reasoning`
+        and `message.reasoning_content` fields, so the prefix is no longer
+        required for the model to reason. Leave it False unless you have a
+        specific reason: on long prompts the prefix can crowd out output
+        tokens and has been seen producing empty `{"":""}` responses.
+        """
         if max_tokens < MIN_MAX_TOKENS:
             raise ValueError(
                 f"max_tokens={max_tokens} below floor {MIN_MAX_TOKENS}: "
@@ -60,11 +73,11 @@ class NIMNemotronClient:
                 "because the reasoning trace consumes the budget first"
             )
 
-        # "detailed thinking on" is Nemotron Super's reasoning toggle (docs/nemotron.md).
-        # Fix-gen wants ON — false patches that don't apply waste user trust.
-        system_prefixed = f"detailed thinking on\n\n{system}"
+        system_content = (
+            f"detailed thinking on\n\n{system}" if detailed_thinking else system
+        )
         messages: list[dict[str, str]] = [
-            {"role": "system", "content": system_prefixed},
+            {"role": "system", "content": system_content},
             {"role": "user", "content": user},
         ]
         raw = self._call(model, messages, max_tokens)
@@ -164,6 +177,7 @@ class MockNemotronClient:
         user: str,
         schema: dict[str, Any] | None = None,
         max_tokens: int = 2048,
+        detailed_thinking: bool = False,
     ) -> dict[str, Any]:
         for marker, response in self._responses.items():
             if marker in user:
