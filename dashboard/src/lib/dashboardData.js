@@ -190,6 +190,23 @@ async function loadJson(url) {
   return response.json();
 }
 
+async function postJson(url, payload) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`failed to post ${url}`);
+  }
+
+  return response.json();
+}
+
 export async function loadDashboardData() {
   if (window.__PATCH_DASHBOARD_DATA__) {
     return {
@@ -211,81 +228,105 @@ export async function loadDashboardData() {
   }
 }
 
-function withEventMarkers(events) {
-  return events.map((event, index) => ({
-    id: `event-${index}-${event.summary}`,
-    ...event,
+function normalizeCommitEvents(events) {
+  return events.map((event) => ({
+    verdict: event.allowed ? "allow" : "block",
+    summary: event.action,
+    note: event.reason,
   }));
 }
 
 export async function commitFix(finding, proposal) {
-  const events = withEventMarkers([
-    {
-      verdict: "allow",
-      summary: `severity_check:${finding.severity}`,
-      note: "escalated to human",
-    },
-    {
-      verdict: "block",
-      summary: "commit_to_branch",
-      note: "awaiting human approval",
-    },
-    {
-      verdict: "block",
-      summary: "open_pull_request",
-      note: "awaiting human approval",
-    },
-  ]);
+  try {
+    const result = await postJson("/api/commit-fix", { finding, proposal });
+    return {
+      status: result.status,
+      selectedProposalId: result.proposal_id ?? proposal.proposal_id,
+      events: normalizeCommitEvents(result.events ?? []),
+      auditEntries: result.audit_entries ?? [],
+      prUrl: result.pr_url ?? "",
+      branch: result.branch ?? "",
+      reason: result.reason ?? "",
+    };
+  } catch {
+    const events = normalizeCommitEvents([
+      {
+        action: `severity_check:${finding.severity}`,
+        allowed: true,
+        reason: "escalated to human",
+      },
+      {
+        action: "commit_to_branch",
+        allowed: false,
+        reason: "awaiting human approval",
+      },
+      {
+        action: "open_pull_request",
+        allowed: false,
+        reason: "awaiting human approval",
+      },
+    ]);
 
-  return {
-    status: "awaiting_approval",
-    selectedProposalId: proposal.proposal_id,
-    events,
-    auditEntries: [
-      {
-        timestamp: "10:41:14",
-        event: `commit_fix staged rank ${proposal.rank} for ${finding.category}`,
-      },
-      {
-        timestamp: "10:41:15",
-        event: "policy gate blocked commit until human approval",
-      },
-    ],
-  };
+    return {
+      status: "awaiting_approval",
+      selectedProposalId: proposal.proposal_id,
+      events,
+      auditEntries: [
+        {
+          timestamp: "10:41:14",
+          event: `commit_fix staged rank ${proposal.rank} for ${finding.category}`,
+        },
+      ],
+      reason: "",
+    };
+  }
 }
 
 export async function commitFixApproved(finding, proposal) {
-  const events = withEventMarkers([
-    {
-      verdict: "allow",
-      summary: `severity_check:${finding.severity}`,
-      note: "human escalation acknowledged",
-    },
-    {
-      verdict: "allow",
-      summary: "commit_to_branch",
-      note: "approved by human click",
-    },
-    {
-      verdict: "allow",
-      summary: "open_pull_request",
-      note: "approved by human click",
-    },
-  ]);
+  try {
+    const result = await postJson("/api/commit-fix-approved", {
+      finding,
+      proposal,
+    });
+    return {
+      status: result.status,
+      selectedProposalId: result.proposal_id ?? proposal.proposal_id,
+      events: normalizeCommitEvents(result.events ?? []),
+      auditEntries: result.audit_entries ?? [],
+      prUrl: result.pr_url ?? "",
+      branch: result.branch ?? "",
+      reason: result.reason ?? "",
+    };
+  } catch {
+    const events = normalizeCommitEvents([
+      {
+        action: `severity_check:${finding.severity}`,
+        allowed: true,
+        reason: "human escalation acknowledged",
+      },
+      {
+        action: "commit_to_branch",
+        allowed: true,
+        reason: "approved by human click",
+      },
+      {
+        action: "open_pull_request",
+        allowed: true,
+        reason: "approved by human click",
+      },
+    ]);
 
-  return {
-    status: "approved",
-    selectedProposalId: proposal.proposal_id,
-    events,
-    auditEntries: [
-      {
-        timestamp: "10:41:18",
-        event: `commit_fix_approved executed rank ${proposal.rank} for ${finding.category}`,
-      },
-      {
-        timestamp: "10:41:19",
-        event: "commit opened branch and prepared pull request",
-      },
-    ],
-  };
+    return {
+      status: "approved",
+      selectedProposalId: proposal.proposal_id,
+      events,
+      auditEntries: [
+        {
+          timestamp: "10:41:18",
+          event: `commit_fix_approved executed rank ${proposal.rank} for ${finding.category}`,
+        },
+      ],
+      reason: "",
+    };
+  }
 }

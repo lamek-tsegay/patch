@@ -225,6 +225,10 @@ code {
   border-color: rgba(37, 99, 235, 0.34);
 }
 
+.success-notice {
+  border-color: rgba(142, 197, 255, 0.34);
+}
+
 .inline-notice {
   margin-top: 14px;
 }

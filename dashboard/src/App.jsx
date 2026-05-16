@@ -87,6 +87,7 @@ export default function App() {
   const [selectedProposalId, setSelectedProposalId] = useState("");
   const [actionState, setActionState] = useState("idle");
   const [actionError, setActionError] = useState("");
+  const [actionResult, setActionResult] = useState(null);
 
   useEffect(() => {
     let isActive = true;
@@ -122,6 +123,7 @@ export default function App() {
 
     setActionState("staging");
     setActionError("");
+    setActionResult(null);
 
     try {
       const result = await commitFix(dashboardState.selectedFinding, proposal);
@@ -136,6 +138,7 @@ export default function App() {
             }
           : current,
       );
+      setActionResult(result);
       setActionState("awaiting_approval");
       setOpenSection("policy");
     } catch (error) {
@@ -154,6 +157,7 @@ export default function App() {
 
     setActionState("approving");
     setActionError("");
+    setActionResult(null);
 
     try {
       const result = await commitFixApproved(
@@ -171,6 +175,7 @@ export default function App() {
             }
           : current,
       );
+      setActionResult(result);
       setActionState("approved");
       setOpenSection("audit");
     } catch (error) {
@@ -453,6 +458,25 @@ export default function App() {
                 <div className="hero-notice error-notice inline-notice">
                   <strong>approval flow failed</strong>
                   <p>{actionError}</p>
+                </div>
+              ) : null}
+
+              {actionResult?.status === "approved" ? (
+                <div className="hero-notice success-notice inline-notice">
+                  <strong>commit pipeline approved</strong>
+                  <p>
+                    {actionResult.branch
+                      ? `branch ${actionResult.branch} created`
+                      : "approval completed through the local policy bridge"}
+                  </p>
+                  {actionResult.prUrl ? (
+                    <p>
+                      pr ready:{" "}
+                      <a href={actionResult.prUrl} target="_blank" rel="noreferrer">
+                        {actionResult.prUrl}
+                      </a>
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>
