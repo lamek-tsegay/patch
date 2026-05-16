@@ -10,7 +10,7 @@ function RobotMascot() {
     <div className="robot" aria-hidden="true">
       <svg
         className="robot-svg"
-        viewBox="0 0 360 500"
+        viewBox="0 0 380 520"
         role="img"
         aria-label="patch robot mascot"
       >
@@ -21,6 +21,11 @@ function RobotMascot() {
             <stop offset="62%" stopColor="#b4b9c6" />
             <stop offset="100%" stopColor="#7f8798" />
           </linearGradient>
+          <linearGradient id="metalBright" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="45%" stopColor="#f0f2f7" />
+            <stop offset="100%" stopColor="#a8afbd" />
+          </linearGradient>
           <linearGradient id="metalDark" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#cfd4df" />
             <stop offset="100%" stopColor="#5c6474" />
@@ -28,6 +33,10 @@ function RobotMascot() {
           <linearGradient id="visor" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#171a22" />
             <stop offset="100%" stopColor="#05060b" />
+          </linearGradient>
+          <linearGradient id="blackMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#2b2f39" />
+            <stop offset="100%" stopColor="#0b0d12" />
           </linearGradient>
           <linearGradient id="joint" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#2f323b" />
@@ -50,40 +59,45 @@ function RobotMascot() {
           </filter>
         </defs>
 
-        <ellipse cx="184" cy="474" rx="88" ry="18" fill="url(#floorGlow)" />
+        <ellipse cx="192" cy="488" rx="98" ry="22" fill="url(#floorGlow)" />
 
         <g filter="url(#shadow)">
-          <rect x="176" y="16" width="6" height="28" rx="3" fill="#aeb7ca" />
-          <circle cx="179" cy="10" r="8" fill="url(#blueCore)" filter="url(#softGlow)" />
+          <rect x="188" y="14" width="6" height="30" rx="3" fill="#aeb7ca" />
+          <circle cx="191" cy="8" r="8" fill="url(#blueCore)" filter="url(#softGlow)" />
 
-          <g transform="translate(96 34)">
-            <rect x="0" y="0" width="168" height="126" rx="36" fill="url(#metal)" />
-            <rect x="10" y="10" width="148" height="106" rx="28" fill="#eff2f8" opacity="0.55" />
-            <rect x="18" y="16" width="132" height="96" rx="26" fill="url(#visor)" />
-            <ellipse cx="44" cy="58" rx="14" ry="17" fill="#ffffff" />
-            <ellipse cx="88" cy="58" rx="14" ry="17" fill="#ffffff" />
-            <path d="M59 83c8 10 24 10 32 0" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" />
+          <g transform="translate(101 30)">
+            <rect x="0" y="0" width="180" height="132" rx="38" fill="url(#metal)" />
+            <path
+              d="M17 18h146c11 0 20 9 20 20v52c0 14-12 26-26 26H31C17 116 5 104 5 90V38c0-11 9-20 20-20Z"
+              fill="#eff2f8"
+              opacity="0.4"
+            />
+            <rect x="20" y="16" width="140" height="100" rx="28" fill="url(#visor)" />
+            <ellipse cx="53" cy="57" rx="14" ry="16" fill="#ffffff" />
+            <ellipse cx="97" cy="57" rx="14" ry="16" fill="#ffffff" />
+            <path d="M69 83c8 9 22 9 30 0" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" />
             <g>
-              <ellipse cx="-2" cy="57" rx="19" ry="28" fill="url(#metal)" />
-              <ellipse cx="170" cy="57" rx="19" ry="28" fill="url(#metal)" />
-              <circle cx="-2" cy="57" r="9" fill="url(#blueCore)" />
-              <circle cx="170" cy="57" r="9" fill="url(#blueCore)" />
+              <ellipse cx="-2" cy="58" rx="20" ry="29" fill="url(#metal)" />
+              <ellipse cx="182" cy="58" rx="20" ry="29" fill="url(#metal)" />
+              <circle cx="-2" cy="58" r="9" fill="url(#blueCore)" />
+              <circle cx="182" cy="58" r="9" fill="url(#blueCore)" />
             </g>
           </g>
 
-          <rect x="164" y="164" width="30" height="26" rx="12" fill="url(#metalDark)" />
+          <rect x="176" y="166" width="30" height="20" rx="10" fill="url(#metalDark)" />
 
-          <g transform="translate(112 184)">
+          <g transform="translate(113 186)">
             <path
-              d="M26 0h92c21 0 38 16 40 37l7 64c2 20-14 37-35 37H15C-6 138-22 121-20 101l7-64C-11 16 5 0 26 0Z"
-              fill="url(#metal)"
+              d="M31 0h84c24 0 42 18 42 41v54c0 26-20 47-45 47H34c-25 0-45-21-45-47V41C-11 18 7 0 31 0Z"
+              fill="url(#metalBright)"
             />
             <path
-              d="M18 13h108c15 0 27 11 28 26l4 38c2 18-12 33-31 33H18c-19 0-33-15-31-33l4-38c1-15 13-26 27-26Z"
-              fill="#ecf0f8"
-              opacity="0.4"
+              d="M26 12h96c15 0 27 11 27 26v33c0 22-16 39-37 39H36C15 110-1 93-1 71V38c0-15 12-26 27-26Z"
+              fill="#e7ebf3"
+              opacity="0.5"
             />
-            <rect x="52" y="26" width="52" height="58" rx="16" fill="#14204d" />
+            <path d="M35 138h76l6 16H29l6-16Z" fill="url(#blackMetal)" />
+            <rect x="53" y="26" width="50" height="58" rx="16" fill="#14204d" />
             <path
               d="M78 39l7 14 16 2-12 10 4 16-15-8-15 8 4-16-12-10 16-2 7-14Z"
               fill="#4d8dff"
@@ -91,43 +105,45 @@ function RobotMascot() {
             />
           </g>
 
-          <g transform="translate(98 318)">
-            <rect x="36" y="0" width="90" height="22" rx="11" fill="url(#joint)" />
-            <rect x="43" y="18" width="76" height="24" rx="10" fill="url(#metalDark)" />
+          <g transform="translate(121 331)">
+            <path d="M14 0h114l6 22H8l6-22Z" fill="url(#blackMetal)" />
+            <rect x="34" y="20" width="74" height="18" rx="9" fill="url(#metalDark)" />
           </g>
 
-          <g transform="translate(76 206)">
-            <ellipse cx="28" cy="18" rx="19" ry="21" fill="url(#joint)" />
-            <rect x="18" y="20" width="24" height="74" rx="12" fill="url(#metal)" transform="rotate(28 30 57)" />
-            <circle cx="51" cy="96" r="15" fill="url(#metalDark)" />
-            <rect x="35" y="103" width="24" height="70" rx="12" fill="url(#metal)" transform="rotate(44 47 138)" />
-            <circle cx="18" cy="184" r="17" fill="url(#metal)" />
-            <circle cx="4" cy="203" r="14" fill="url(#metal)" />
-            <circle cx="-8" cy="219" r="13" fill="url(#metal)" />
+          <g transform="translate(66 214)">
+            <circle cx="32" cy="19" r="21" fill="url(#joint)" />
+            <rect x="19" y="20" width="28" height="78" rx="14" fill="url(#metal)" transform="rotate(26 33 59)" />
+            <circle cx="55" cy="103" r="16" fill="url(#joint)" />
+            <rect x="36" y="110" width="28" height="78" rx="14" fill="url(#metal)" transform="rotate(32 50 149)" />
+            <path d="M13 192c8-5 18-5 26 0l6 17c-10 6-24 6-35-1l3-16Z" fill="url(#blackMetal)" />
+            <ellipse cx="12" cy="205" rx="14" ry="15" fill="url(#blackMetal)" />
           </g>
 
-          <g transform="translate(246 188)">
-            <ellipse cx="18" cy="22" rx="19" ry="21" fill="url(#joint)" />
-            <rect x="6" y="22" width="24" height="76" rx="12" fill="url(#metal)" transform="rotate(-36 18 60)" />
-            <circle cx="42" cy="92" r="15" fill="url(#metalDark)" />
-            <rect x="50" y="28" width="24" height="72" rx="12" fill="url(#metal)" transform="rotate(-10 62 64)" />
-            <rect x="63" y="6" width="28" height="38" rx="13" fill="url(#metal)" />
-            <rect x="77" y="-10" width="12" height="26" rx="6" fill="url(#metal)" />
-            <circle cx="77" cy="4" r="11" fill="url(#metal)" />
+          <g transform="translate(262 190)">
+            <circle cx="18" cy="22" r="21" fill="url(#joint)" />
+            <rect x="4" y="22" width="28" height="76" rx="14" fill="url(#metal)" transform="rotate(-31 18 60)" />
+            <circle cx="43" cy="90" r="16" fill="url(#joint)" />
+            <rect x="49" y="26" width="28" height="80" rx="14" fill="url(#metal)" transform="rotate(-8 63 66)" />
+            <rect x="61" y="6" width="30" height="40" rx="14" fill="url(#blackMetal)" />
+            <rect x="78" y="-8" width="11" height="28" rx="5" fill="url(#blackMetal)" />
+            <circle cx="77" cy="5" r="12" fill="url(#blackMetal)" />
+            <rect x="70" y="10" width="10" height="18" rx="5" fill="#353944" />
           </g>
 
-          <g transform="translate(124 350)">
-            <rect x="0" y="0" width="26" height="70" rx="13" fill="url(#metal)" transform="rotate(4 13 35)" />
-            <circle cx="20" cy="74" r="15" fill="url(#blueCore)" filter="url(#softGlow)" />
-            <rect x="-4" y="84" width="44" height="92" rx="18" fill="url(#metal)" />
-            <path d="M-12 177h60c-2 18-17 28-34 28-19 0-30-10-26-28Z" fill="url(#metal)" />
+          <g transform="translate(126 354)">
+            <rect x="2" y="0" width="30" height="66" rx="15" fill="url(#metalDark)" transform="rotate(7 17 33)" />
+            <path d="M-9 70h52l8 100H-5l-4-100Z" fill="url(#metal)" />
+            <circle cx="21" cy="72" r="15" fill="url(#blueCore)" filter="url(#softGlow)" />
+            <path d="M-18 171h78c-3 23-22 35-42 35-22 0-39-12-36-35Z" fill="url(#metalBright)" />
+            <path d="M-18 171h78c-1 7-3 11-5 14h-69c-2-3-4-8-4-14Z" fill="#9098a8" opacity="0.5" />
           </g>
 
-          <g transform="translate(204 350)">
-            <rect x="0" y="0" width="26" height="70" rx="13" fill="url(#metal)" transform="rotate(-4 13 35)" />
-            <circle cx="20" cy="74" r="15" fill="url(#blueCore)" filter="url(#softGlow)" />
-            <rect x="-4" y="84" width="44" height="92" rx="18" fill="url(#metal)" />
-            <path d="M-12 177h60c-2 18-17 28-34 28-19 0-30-10-26-28Z" fill="url(#metal)" />
+          <g transform="translate(216 354)">
+            <rect x="2" y="0" width="30" height="66" rx="15" fill="url(#metalDark)" transform="rotate(-7 17 33)" />
+            <path d="M-9 70h52l-4 100H-5l-4-100Z" fill="url(#metal)" />
+            <circle cx="21" cy="72" r="15" fill="url(#blueCore)" filter="url(#softGlow)" />
+            <path d="M-18 171h78c-3 23-22 35-42 35-22 0-39-12-36-35Z" fill="url(#metalBright)" />
+            <path d="M-18 171h78c-1 7-3 11-5 14h-69c-2-3-4-8-4-14Z" fill="#9098a8" opacity="0.5" />
           </g>
         </g>
       </svg>
