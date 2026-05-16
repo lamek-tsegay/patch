@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from proposer import propose_fixes
+from shared.db import init_db, list_proposals_for_finding
 from shared.nemotron_client import MockNemotronClient
 from shared.schema import Finding, FixStrategy
 
@@ -105,3 +106,21 @@ def test_propose_fixes_unsupported_category_raises():
 
     with pytest.raises(NotImplementedError):
         propose_fixes(other_finding, _mock_client_for_sqli())
+
+
+def test_propose_fixes_writes_to_db_when_conn_provided(monkeypatch):
+    monkeypatch.setenv("NIM_MODEL_SUPER", "mock-nemotron-super")
+    finding = _load_finding()
+    conn = init_db(":memory:")
+
+    proposals = propose_fixes(finding, _mock_client_for_sqli(), db_conn=conn)
+
+    assert len(proposals) == 3
+    stored = list_proposals_for_finding(conn, finding.finding_id)
+    assert [p.rank for p in stored] == [1, 2, 3]
+    assert {p.strategy for p in stored} == {
+        FixStrategy.PARAMETERIZE_QUERY,
+        FixStrategy.INPUT_ALLOWLIST,
+        FixStrategy.PREPARED_STATEMENT,
+    }
+    assert all(p.finding_id == finding.finding_id for p in stored)
