@@ -168,6 +168,38 @@ button {
   margin-top: 28px;
 }
 
+.hero-notice,
+.empty-state {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.hero-notice strong,
+.empty-state strong {
+  display: block;
+  font-size: 13px;
+  text-transform: lowercase;
+}
+
+.hero-notice p,
+.empty-state p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-transform: lowercase;
+}
+
+.error-notice {
+  border-color: rgba(255, 90, 95, 0.34);
+}
+
+.loading-notice {
+  border-color: rgba(37, 99, 235, 0.34);
+}
+
 .primary-button,
 .ghost-button,
 .fix-row {

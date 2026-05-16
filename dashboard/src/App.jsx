@@ -1,145 +1,5 @@
-import { useMemo, useState } from "react";
-
-const activeFinding = {
-  finding_id: "f3a9c1b2-7d4e-4a2f-9c81-1e6b5a4d3c20",
-  severity: "critical",
-  category: "sql_injection",
-  file: "demo-repo/auth/login.py",
-  line_start: 42,
-  line_end: 44,
-  vulnerable_code:
-    "query = f\"SELECT id, password_hash FROM users WHERE email = '{email}'\"",
-  description:
-    "User-controlled email is interpolated directly into a SQL query in the login path. That makes the authentication check bypassable and turns the first matching row into a valid session.",
-  exploit_path:
-    "POST /api/login with email=' OR '1'='1' -- reaches cursor.execute() with attacker-controlled SQL.",
-  cwe: "CWE-89",
-  confidence: 0.95,
-};
-
-const findingQueue = [
-  activeFinding,
-  {
-    finding_id: "0f4a0d31-5f83-4579-bf88-2fbaf4dc466d",
-    severity: "high",
-    category: "hardcoded_secret",
-    file: "demo-repo/payments/stripe_client.py",
-    line_start: 11,
-    line_end: 11,
-    vulnerable_code: 'STRIPE_SECRET_KEY = "sk_live_demo_key"',
-    description: "A production-style Stripe secret is hardcoded in source.",
-    exploit_path:
-      "Anyone with read access to the repo or image can recover the key and call the payment provider directly.",
-    cwe: "CWE-798",
-    confidence: 0.91,
-  },
-  {
-    finding_id: "f70ec61a-96f9-4488-a144-5b6894757bc9",
-    severity: "medium",
-    category: "broken_auth",
-    file: "demo-repo/admin/session.py",
-    line_start: 18,
-    line_end: 19,
-    vulnerable_code: "if user:\n    return True",
-    description:
-      "The admin gate checks truthiness of the user object rather than role or capability.",
-    exploit_path:
-      "Any authenticated account reaching the admin path is treated as authorized.",
-    cwe: "CWE-285",
-    confidence: 0.86,
-  },
-];
-
-const fixProposals = [
-  {
-    rank: 1,
-    title: "use a parameterized query for the users lookup",
-    rationale:
-      "Bind the email as a SQL parameter so the driver escapes attacker input instead of executing it as query syntax.",
-    tradeoffs:
-      "Low-risk and minimal diff, but only fixes this one query site.",
-    risk: "low",
-  },
-  {
-    rank: 2,
-    title: "move login lookup into a typed auth helper",
-    rationale:
-      "Encapsulate the query in one safe helper so the login path and future callers share the same parameterized access pattern.",
-    tradeoffs:
-      "Touches more code than rank 1 and requires light call-site cleanup.",
-    risk: "medium",
-  },
-  {
-    rank: 3,
-    title: "migrate login reads to the orm auth repository",
-    rationale:
-      "Replace raw SQL in the auth path with the repo abstraction already used elsewhere in the app.",
-    tradeoffs:
-      "Largest change surface, but best for long-term consistency.",
-    risk: "medium",
-  },
-];
-
-const reasoningTrace = [
-  {
-    step: "01",
-    title: "indexed first-party code",
-    detail: "scanned demo-repo and excluded third-party dependency source",
-  },
-  {
-    step: "02",
-    title: "traced attacker-controlled input",
-    detail: "mapped request.email from POST /api/login into auth/login.py",
-  },
-  {
-    step: "03",
-    title: "validated exploitability",
-    detail: "confirmed direct string interpolation before db.execute() in auth path",
-  },
-  {
-    step: "04",
-    title: "ranked three remediation strategies",
-    detail: "sorted fixes by blast radius, readability, and break risk",
-  },
-];
-
-const policyEvents = [
-  {
-    verdict: "allow",
-    summary: "read demo-repo/auth/login.py",
-    note: "required to verify vulnerable_code against disk",
-  },
-  {
-    verdict: "allow",
-    summary: "read patch.db",
-    note: "dashboard hydrated findings queue from repo-root sqlite",
-  },
-  {
-    verdict: "block",
-    summary: "write .env",
-    note: "credential mutation blocked outside approved fix pipeline",
-  },
-  {
-    verdict: "block",
-    summary: "outbound network request",
-    note: "policy denied egress during local demo mode",
-  },
-];
-
-const auditTrail = [
-  ["10:41:02", "scan started against demo-repo"],
-  ["10:41:05", "finding emitted to patch.db"],
-  ["10:41:08", "three fix proposals attached"],
-  ["10:41:10", "policy event stream appended"],
-  ["10:41:12", "approval state set to awaiting human review"],
-];
-
-const stats = [
-  { label: "active findings", value: "3" },
-  { label: "policy blocks", value: "2" },
-  { label: "ranked fixes ready", value: "3" },
-  { label: "approval state", value: "awaiting" },
-];
+import { useEffect, useMemo, useState } from "react";
+import { loadDashboardData } from "./lib/dashboardData";
 
 function RobotMascot() {
   return (
@@ -200,151 +60,216 @@ function RobotMascot() {
   );
 }
 
+function buildStats(data) {
+  const findingCount = data.findings.length;
+  const blockedCount = data.policyEvents.filter(
+    (event) => event.verdict === "block",
+  ).length;
+  const proposalCount = data.fixProposals.length;
+
+  return [
+    { label: "active findings", value: String(findingCount) },
+    { label: "policy blocks", value: String(blockedCount) },
+    { label: "ranked fixes ready", value: String(proposalCount) },
+    { label: "approval state", value: proposalCount ? "awaiting" : "idle" },
+  ];
+}
+
 export default function App() {
   const [openSection, setOpenSection] = useState("findings");
+  const [dashboardState, setDashboardState] = useState(null);
+  const [loadingState, setLoadingState] = useState("loading");
+  const [loadError, setLoadError] = useState("");
 
-  const sectionMap = useMemo(
-    () => ({
-      findings: (
-        <div className="finding-card">
-          <div className="finding-heading">
-            <div>
-              <p className="eyebrow critical">{activeFinding.severity}</p>
-              <h3>raw sql query reachable from login form</h3>
-              <p className="finding-path">
-                {activeFinding.file}:{activeFinding.line_start}
-              </p>
+  useEffect(() => {
+    let isActive = true;
+
+    async function hydrateDashboard() {
+      try {
+        const nextState = await loadDashboardData();
+        if (!isActive) {
+          return;
+        }
+        setDashboardState(nextState);
+        setLoadingState("ready");
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+        setLoadError(error instanceof Error ? error.message : "failed to load");
+        setLoadingState("error");
+      }
+    }
+
+    hydrateDashboard();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const stats = useMemo(
+    () => (dashboardState ? buildStats(dashboardState) : []),
+    [dashboardState],
+  );
+
+  const sections = useMemo(() => {
+    if (!dashboardState) {
+      return [];
+    }
+
+    const selectedFinding = dashboardState.selectedFinding;
+
+    return [
+      {
+        id: "findings",
+        title: "findings",
+        summary: `${dashboardState.findings.length} findings · contract-shaped payloads`,
+        content: selectedFinding ? (
+          <div className="finding-card">
+            <div className="finding-heading">
+              <div>
+                <p className="eyebrow critical">{selectedFinding.severity}</p>
+                <h3>raw sql query reachable from login form</h3>
+                <p className="finding-path">
+                  {selectedFinding.file}:{selectedFinding.line_start}
+                </p>
+              </div>
+              <span className="live-indicator">selected</span>
             </div>
-            <span className="live-indicator">selected</span>
-          </div>
 
-          <p className="finding-description">{activeFinding.description}</p>
+            <p className="finding-description">{selectedFinding.description}</p>
 
-          <div className="finding-meta">
-            <div>
-              <p className="mini-label">category</p>
-              <p>{activeFinding.category}</p>
+            <div className="finding-meta">
+              <div>
+                <p className="mini-label">category</p>
+                <p>{selectedFinding.category}</p>
+              </div>
+              <div>
+                <p className="mini-label">confidence</p>
+                <p>{selectedFinding.confidence}</p>
+              </div>
+              <div>
+                <p className="mini-label">cwe</p>
+                <p>{selectedFinding.cwe}</p>
+              </div>
             </div>
-            <div>
-              <p className="mini-label">confidence</p>
-              <p>{activeFinding.confidence}</p>
-            </div>
-            <div>
-              <p className="mini-label">cwe</p>
-              <p>{activeFinding.cwe}</p>
-            </div>
-          </div>
 
-          <div className="evidence-strip">
-            <p className="mini-label">exploit path</p>
-            <p>{activeFinding.exploit_path}</p>
-          </div>
+            <div className="evidence-strip">
+              <p className="mini-label">exploit path</p>
+              <p>{selectedFinding.exploit_path}</p>
+            </div>
 
-          <div className="fix-list">
-            <p className="mini-label">three ranked fix options</p>
-            {fixProposals.map((proposal) => (
-              <button className="fix-row" key={proposal.rank} type="button">
-                <span className="fix-rank">{proposal.rank}</span>
-                <span className="fix-copy">
-                  <strong>{proposal.title}</strong>
-                  <small>{proposal.rationale}</small>
-                </span>
-                <span className={`risk-chip risk-${proposal.risk}`}>
-                  {proposal.risk}
-                </span>
+            <div className="fix-list">
+              <p className="mini-label">three ranked fix options</p>
+              {dashboardState.fixProposals.map((proposal) => (
+                <button className="fix-row" key={proposal.proposal_id} type="button">
+                  <span className="fix-rank">{proposal.rank}</span>
+                  <span className="fix-copy">
+                    <strong>{proposal.title}</strong>
+                    <small>{proposal.rationale}</small>
+                  </span>
+                  <span
+                    className={`risk-chip risk-${proposal.breaking_change_risk}`}
+                  >
+                    {proposal.breaking_change_risk}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="action-row">
+              <button className="primary-button" type="button">
+                approve rank 1
               </button>
-            ))}
-          </div>
+              <button className="ghost-button" type="button">
+                review diff
+              </button>
+            </div>
 
-          <div className="action-row">
-            <button className="primary-button" type="button">
-              approve rank 1
-            </button>
-            <button className="ghost-button" type="button">
-              review diff
-            </button>
+            <div className="queue-list">
+              <p className="mini-label">queue</p>
+              {dashboardState.findings.slice(1).map((finding) => (
+                <div className="queue-row" key={finding.finding_id}>
+                  <span className={`severity-pill severity-${finding.severity}`}>
+                    {finding.severity}
+                  </span>
+                  <div>
+                    <strong>{finding.category}</strong>
+                    <small>
+                      {finding.file}:{finding.line_start}
+                    </small>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-
-          <div className="queue-list">
-            <p className="mini-label">queue</p>
-            {findingQueue.slice(1).map((finding) => (
-              <div className="queue-row" key={finding.finding_id}>
-                <span className={`severity-pill severity-${finding.severity}`}>
-                  {finding.severity}
-                </span>
+        ) : (
+          <div className="empty-state">
+            <strong>no findings loaded</strong>
+            <p>waiting for serialized Finding payloads from the detector.</p>
+          </div>
+        ),
+      },
+      {
+        id: "reasoning",
+        title: "reasoning",
+        summary: `${dashboardState.reasoningTrace.length} steps · narration-ready`,
+        content: (
+          <div className="simple-list">
+            {dashboardState.reasoningTrace.map((item) => (
+              <div className="list-row detail-row" key={item.step}>
+                <span>{item.step}</span>
                 <div>
-                  <strong>{finding.category}</strong>
-                  <small>
-                    {finding.file}:{finding.line_start}
-                  </small>
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      ),
-      reasoning: (
-        <div className="simple-list">
-          {reasoningTrace.map((item) => (
-            <div className="list-row detail-row" key={item.step}>
-              <span>{item.step}</span>
-              <div>
-                <strong>{item.title}</strong>
-                <p>{item.detail}</p>
+        ),
+      },
+      {
+        id: "policy",
+        title: "policy",
+        summary: `${dashboardState.policyEvents.length} events · ${dashboardState.metadata.policySource}`,
+        content: (
+          <div className="simple-list">
+            {dashboardState.policyEvents.map((event, index) => (
+              <div
+                className={`policy-row ${event.verdict}`}
+                key={`${event.summary}-${index}`}
+              >
+                <span>{event.verdict}</span>
+                <div>
+                  <strong>{event.summary}</strong>
+                  <p>{event.note}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ),
-      policy: (
-        <div className="simple-list">
-          {policyEvents.map((event) => (
-            <div className={`policy-row ${event.verdict}`} key={event.summary}>
-              <span>{event.verdict}</span>
-              <div>
-                <strong>{event.summary}</strong>
-                <p>{event.note}</p>
+            ))}
+          </div>
+        ),
+      },
+      {
+        id: "audit",
+        title: "audit trail",
+        summary: `${dashboardState.auditTrail.length} events · chronological`,
+        content: (
+          <div className="simple-list">
+            {dashboardState.auditTrail.map((entry) => (
+              <div
+                className="audit-row"
+                key={`${entry.timestamp}-${entry.event}`}
+              >
+                <span>{entry.timestamp}</span>
+                <p>{entry.event}</p>
               </div>
-            </div>
-          ))}
-        </div>
-      ),
-      audit: (
-        <div className="simple-list">
-          {auditTrail.map(([time, event]) => (
-            <div className="audit-row" key={`${time}-${event}`}>
-              <span>{time}</span>
-              <p>{event}</p>
-            </div>
-          ))}
-        </div>
-      ),
-    }),
-    [],
-  );
-
-  const sections = [
-    {
-      id: "findings",
-      title: "findings",
-      summary: "sqlite-backed queue · 3 findings loaded",
-    },
-    {
-      id: "reasoning",
-      title: "reasoning",
-      summary: "nano-readable narration of the current scan",
-    },
-    {
-      id: "policy",
-      title: "policy",
-      summary: "live allow and block events from NemoClaw",
-    },
-    {
-      id: "audit",
-      title: "audit trail",
-      summary: "chronological demo log from scan start to approval",
-    },
-  ];
+            ))}
+          </div>
+        ),
+      },
+    ];
+  }, [dashboardState]);
 
   return (
     <main className="app-shell">
@@ -355,18 +280,25 @@ export default function App() {
         </div>
 
         <div className="topbar-right">
-          <span className="tiny-chip">sqlite ./patch.db</span>
-          <span className="tiny-chip">jsonl streams pending</span>
+          <span className="tiny-chip">
+            {dashboardState?.metadata.findingSource ?? "sqlite ./patch.db"}
+          </span>
+          <span className="tiny-chip">
+            {dashboardState?.metadata.traceSource ?? "trace stream pending"}
+          </span>
+          <span className="tiny-chip">
+            {dashboardState ? `source ${dashboardState.source}` : "loading data"}
+          </span>
           <div className="status-pill">
             <span className="status-dot" />
-            live
+            {dashboardState?.metadata.live ? "live" : "demo"}
           </div>
         </div>
       </header>
 
       <section className="hero">
         <div className="hero-text">
-          <p className="eyebrow">bk dashboard · demo mode</p>
+          <p className="eyebrow">bk dashboard · integration-ready</p>
           <h1>
             patch secures
             <br />
@@ -385,6 +317,20 @@ export default function App() {
               open findings
             </button>
           </div>
+
+          {loadingState === "error" ? (
+            <div className="hero-notice error-notice">
+              <strong>data load failed</strong>
+              <p>{loadError}</p>
+            </div>
+          ) : null}
+
+          {loadingState === "loading" ? (
+            <div className="hero-notice loading-notice">
+              <strong>loading dashboard state</strong>
+              <p>checking api, then json file, then mock fallback</p>
+            </div>
+          ) : null}
 
           <div className="stats-grid">
             {stats.map((stat) => (
@@ -420,7 +366,7 @@ export default function App() {
               </button>
 
               {isOpen ? (
-                <div className="accordion-panel">{sectionMap[section.id]}</div>
+                <div className="accordion-panel">{section.content}</div>
               ) : null}
             </div>
           );
