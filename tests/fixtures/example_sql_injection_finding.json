@@ -1,0 +1,14 @@
+{
+  "finding_id": "f3a9c1b2-7d4e-4a2f-9c81-1e6b5a4d3c20",
+  "severity": "critical",
+  "category": "sql_injection",
+  "file": "demo-repo/auth/login.py",
+  "line_start": 42,
+  "line_end": 44,
+  "vulnerable_code": "    query = f\"SELECT id, password_hash FROM users WHERE email = '{email}'\"\n    row = db.execute(query).fetchone()\n    if not row:",
+  "description": "User-supplied email is interpolated directly into a SQL string with no parameterization. An attacker can bypass authentication or exfiltrate the users table.",
+  "exploit_path": "POST /api/login with body {\"email\": \"' OR '1'='1' --\", \"password\": \"anything\"} returns the first row from the users table, granting login as that user.",
+  "cwe": "CWE-89",
+  "confidence": 0.95,
+  "detected_at": "2026-05-15T22:30:00Z"
+}
