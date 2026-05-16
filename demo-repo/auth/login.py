@@ -39,8 +39,8 @@ def login():
     db = get_db()
 
     # Look up the user by email. We lowercase above so we don't need COLLATE.
-    query = f"SELECT id, password_hash FROM users WHERE email = '{email}'"
-    row = db.execute(query).fetchone()
+    query = "SELECT id, password_hash FROM users WHERE email = ?"
+    row = db.execute(query, (email,)).fetchone()
     if not row:
         _record_attempt(email, success=False)
         return jsonify({"error": "invalid credentials"}), 401
