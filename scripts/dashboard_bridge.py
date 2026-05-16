@@ -295,18 +295,25 @@ def _fallback_commit(command: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 def _handle_commit(command: str) -> dict[str, Any]:
     payload = _read_payload()
-    committer = _load_committer_module()
-    if committer is None:
-        return _fallback_commit(command, payload)
-
     try:
+        _root = str(ROOT)
+        _pdir = str(POLICY_DIR)
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+        if _pdir not in sys.path:
+            sys.path.insert(0, _pdir)
+        import committer as _committer
+        from shared.schema import Finding
+        finding = Finding(**payload["finding"])
+        proposal = payload["proposal"]
         result = (
-            committer.commit_fix(payload["finding"], payload["proposal"])
+            _committer.commit_fix(finding, proposal)
             if command == "commit-fix"
-            else committer.commit_fix_approved(payload["finding"], payload["proposal"])
+            else _committer.commit_fix_approved(finding, proposal)
         )
         return _serialize_policy_result(result, [])
-    except Exception:
+    except Exception as e:
+        sys.stderr.write(f"committer error: {e}\n")
         return _fallback_commit(command, payload)
 
 
