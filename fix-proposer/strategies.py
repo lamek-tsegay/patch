@@ -52,14 +52,16 @@ _SQL_INJECTION_SLOTS: tuple[StrategySlot, StrategySlot, StrategySlot] = (
         strategy=FixStrategy.PREPARED_STATEMENT,
         description="Use the DB driver's prepared-statement API to pre-compile the query and bind parameters at execute time.",
         prompt_hint=(
-            "Use the DB driver's prepared-statement API: call db.prepare("
-            "query) with the parameterized SQL string, then execute the "
-            "prepared statement with (email,) as the parameter tuple. Bind "
-            "the result to row and preserve the if not row: branch exactly. "
-            "If the existing db object does not expose .prepare(), call this "
-            "limitation out in tradeoffs and fall back to the "
-            "parameterize_query pattern's db.execute(query, (email,)) form — "
-            "pick whichever maps cleanly to the visible db object."
+            "Use the DB driver's prepared-statement API explicitly: introduce "
+            "a stmt = db.prepare(query) call with the parameterized SQL string "
+            "as input, then execute the prepared statement via "
+            "row = stmt.execute((email,)).fetchone(). This MUST be "
+            "structurally distinct from rank 1's db.execute(query, (email,)) "
+            "pattern — the demo needs three visibly different fixes. If the "
+            "finding doesn't show a db.prepare API in scope, your replace_block "
+            "should still introduce the prepare pattern and call out in "
+            "tradeoffs that the project's db object will need a .prepare() "
+            "method added (breaking_change_risk: medium)."
         ),
     ),
 )

@@ -10,11 +10,14 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any, Protocol
 
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
+
+_RAW_DUMP_DIR = Path(__file__).resolve().parent.parent / "tests" / "outputs"
 
 
 # Nemotron 3 reasoning models return None content below this — the reasoning
@@ -66,7 +69,9 @@ class NIMNemotronClient:
         ]
         raw = self._call(model, messages, max_tokens)
         try:
-            return json.loads(_strip_code_fences(raw))
+            parsed = json.loads(_strip_code_fences(raw))
+            _dump_raw_response(user, raw)
+            return parsed
         except json.JSONDecodeError:
             # One repair retry per docs/nemotron.md. Nemotron's JSON adherence
             # is not Claude-tier; one nudge usually fixes it.
@@ -78,7 +83,10 @@ class NIMNemotronClient:
             )
             messages.append({"role": "assistant", "content": raw})
             messages.append({"role": "user", "content": repair})
-            return json.loads(_strip_code_fences(self._call(model, messages, max_tokens)))
+            raw2 = self._call(model, messages, max_tokens)
+            parsed = json.loads(_strip_code_fences(raw2))
+            _dump_raw_response(user, raw2)
+            return parsed
 
     def _call(self, model: str, messages: list[dict[str, str]], max_tokens: int) -> str:
         t0 = time.perf_counter()
@@ -111,6 +119,31 @@ def _strip_code_fences(raw: str) -> str:
         if s.lower().startswith("json"):
             s = s[4:].strip()
     return s
+
+
+def _slot_hint(user: str) -> str:
+    """Extract the strategy value from the prompt's 'Strategy: <value>' line.
+
+    Filename-safe slug. Falls back to 'unknown' if no Strategy line is found.
+    """
+    marker = "Strategy: "
+    idx = user.find(marker)
+    if idx == -1:
+        return "unknown"
+    value = user[idx + len(marker):].split("\n", 1)[0].strip()
+    slug = "".join(c if c.isalnum() else "_" for c in value)
+    return slug or "unknown"
+
+
+def _dump_raw_response(user: str, raw: str) -> None:
+    """Persist the raw NIM response to tests/outputs/ for post-mortem diagnosis."""
+    try:
+        _RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
+        path = _RAW_DUMP_DIR / f"last_raw_response_{_slot_hint(user)}_{int(time.time())}.json"
+        path.write_text(raw)
+        logger.info("nim_raw_response_dump path=%s", path)
+    except OSError as e:
+        logger.warning("could not dump raw response: %s", e)
 
 
 class MockNemotronClient:
