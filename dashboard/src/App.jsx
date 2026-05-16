@@ -8,58 +8,129 @@ import {
 function RobotMascot() {
   return (
     <div className="robot" aria-hidden="true">
-      <div className="robot-antenna" />
-      <div className="robot-head">
-        <span className="robot-ear robot-ear-left" />
-        <span className="robot-ear robot-ear-right" />
-        <div className="robot-visor">
-          <div className="robot-face">
-            <span className="robot-eye" />
-            <span className="robot-eye" />
-          </div>
-          <div className="robot-mouth" />
-        </div>
-      </div>
+      <svg
+        className="robot-svg"
+        viewBox="0 0 360 500"
+        role="img"
+        aria-label="patch robot mascot"
+      >
+        <defs>
+          <linearGradient id="metal" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="28%" stopColor="#daddE6" />
+            <stop offset="62%" stopColor="#b4b9c6" />
+            <stop offset="100%" stopColor="#7f8798" />
+          </linearGradient>
+          <linearGradient id="metalDark" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#cfd4df" />
+            <stop offset="100%" stopColor="#5c6474" />
+          </linearGradient>
+          <linearGradient id="visor" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#171a22" />
+            <stop offset="100%" stopColor="#05060b" />
+          </linearGradient>
+          <linearGradient id="joint" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#2f323b" />
+            <stop offset="100%" stopColor="#0e1016" />
+          </linearGradient>
+          <radialGradient id="blueCore" cx="35%" cy="35%" r="70%">
+            <stop offset="0%" stopColor="#72a9ff" />
+            <stop offset="55%" stopColor="#2563eb" />
+            <stop offset="100%" stopColor="#19398b" />
+          </radialGradient>
+          <radialGradient id="floorGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(37,99,235,0.65)" />
+            <stop offset="100%" stopColor="rgba(37,99,235,0)" />
+          </radialGradient>
+          <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="18" stdDeviation="16" floodColor="#000000" floodOpacity="0.35" />
+          </filter>
+          <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#2563eb" floodOpacity="0.35" />
+          </filter>
+        </defs>
 
-      <div className="robot-neck" />
+        <ellipse cx="184" cy="474" rx="88" ry="18" fill="url(#floorGlow)" />
 
-      <div className="robot-torso">
-        <span className="robot-shoulder robot-shoulder-left" />
-        <span className="robot-shoulder robot-shoulder-right" />
-        <div className="robot-badge">★</div>
-      </div>
+        <g filter="url(#shadow)">
+          <rect x="176" y="16" width="6" height="28" rx="3" fill="#aeb7ca" />
+          <circle cx="179" cy="10" r="8" fill="url(#blueCore)" filter="url(#softGlow)" />
 
-      <div className="robot-arm robot-arm-left">
-        <span className="robot-upper-arm" />
-        <span className="robot-elbow" />
-        <span className="robot-forearm" />
-        <span className="robot-hand robot-hand-hip" />
-      </div>
+          <g transform="translate(96 34)">
+            <rect x="0" y="0" width="168" height="126" rx="36" fill="url(#metal)" />
+            <rect x="10" y="10" width="148" height="106" rx="28" fill="#eff2f8" opacity="0.55" />
+            <rect x="18" y="16" width="132" height="96" rx="26" fill="url(#visor)" />
+            <ellipse cx="44" cy="58" rx="14" ry="17" fill="#ffffff" />
+            <ellipse cx="88" cy="58" rx="14" ry="17" fill="#ffffff" />
+            <path d="M59 83c8 10 24 10 32 0" fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" />
+            <g>
+              <ellipse cx="-2" cy="57" rx="19" ry="28" fill="url(#metal)" />
+              <ellipse cx="170" cy="57" rx="19" ry="28" fill="url(#metal)" />
+              <circle cx="-2" cy="57" r="9" fill="url(#blueCore)" />
+              <circle cx="170" cy="57" r="9" fill="url(#blueCore)" />
+            </g>
+          </g>
 
-      <div className="robot-arm robot-arm-right">
-        <span className="robot-upper-arm" />
-        <span className="robot-elbow" />
-        <span className="robot-forearm" />
-        <span className="robot-hand robot-hand-thumbs-up">
-          <span className="robot-thumb" />
-        </span>
-      </div>
+          <rect x="164" y="164" width="30" height="26" rx="12" fill="url(#metalDark)" />
 
-      <div className="robot-hips" />
+          <g transform="translate(112 184)">
+            <path
+              d="M26 0h92c21 0 38 16 40 37l7 64c2 20-14 37-35 37H15C-6 138-22 121-20 101l7-64C-11 16 5 0 26 0Z"
+              fill="url(#metal)"
+            />
+            <path
+              d="M18 13h108c15 0 27 11 28 26l4 38c2 18-12 33-31 33H18c-19 0-33-15-31-33l4-38c1-15 13-26 27-26Z"
+              fill="#ecf0f8"
+              opacity="0.4"
+            />
+            <rect x="52" y="26" width="52" height="58" rx="16" fill="#14204d" />
+            <path
+              d="M78 39l7 14 16 2-12 10 4 16-15-8-15 8 4-16-12-10 16-2 7-14Z"
+              fill="#4d8dff"
+              filter="url(#softGlow)"
+            />
+          </g>
 
-      <div className="robot-leg robot-leg-left">
-        <span className="robot-knee-cap" />
-        <span className="robot-thigh" />
-        <span className="robot-shin" />
-        <span className="robot-foot" />
-      </div>
+          <g transform="translate(98 318)">
+            <rect x="36" y="0" width="90" height="22" rx="11" fill="url(#joint)" />
+            <rect x="43" y="18" width="76" height="24" rx="10" fill="url(#metalDark)" />
+          </g>
 
-      <div className="robot-leg robot-leg-right">
-        <span className="robot-knee-cap" />
-        <span className="robot-thigh" />
-        <span className="robot-shin" />
-        <span className="robot-foot" />
-      </div>
+          <g transform="translate(76 206)">
+            <ellipse cx="28" cy="18" rx="19" ry="21" fill="url(#joint)" />
+            <rect x="18" y="20" width="24" height="74" rx="12" fill="url(#metal)" transform="rotate(28 30 57)" />
+            <circle cx="51" cy="96" r="15" fill="url(#metalDark)" />
+            <rect x="35" y="103" width="24" height="70" rx="12" fill="url(#metal)" transform="rotate(44 47 138)" />
+            <circle cx="18" cy="184" r="17" fill="url(#metal)" />
+            <circle cx="4" cy="203" r="14" fill="url(#metal)" />
+            <circle cx="-8" cy="219" r="13" fill="url(#metal)" />
+          </g>
+
+          <g transform="translate(246 188)">
+            <ellipse cx="18" cy="22" rx="19" ry="21" fill="url(#joint)" />
+            <rect x="6" y="22" width="24" height="76" rx="12" fill="url(#metal)" transform="rotate(-36 18 60)" />
+            <circle cx="42" cy="92" r="15" fill="url(#metalDark)" />
+            <rect x="50" y="28" width="24" height="72" rx="12" fill="url(#metal)" transform="rotate(-10 62 64)" />
+            <rect x="63" y="6" width="28" height="38" rx="13" fill="url(#metal)" />
+            <rect x="77" y="-10" width="12" height="26" rx="6" fill="url(#metal)" />
+            <circle cx="77" cy="4" r="11" fill="url(#metal)" />
+          </g>
+
+          <g transform="translate(124 350)">
+            <rect x="0" y="0" width="26" height="70" rx="13" fill="url(#metal)" transform="rotate(4 13 35)" />
+            <circle cx="20" cy="74" r="15" fill="url(#blueCore)" filter="url(#softGlow)" />
+            <rect x="-4" y="84" width="44" height="92" rx="18" fill="url(#metal)" />
+            <path d="M-12 177h60c-2 18-17 28-34 28-19 0-30-10-26-28Z" fill="url(#metal)" />
+          </g>
+
+          <g transform="translate(204 350)">
+            <rect x="0" y="0" width="26" height="70" rx="13" fill="url(#metal)" transform="rotate(-4 13 35)" />
+            <circle cx="20" cy="74" r="15" fill="url(#blueCore)" filter="url(#softGlow)" />
+            <rect x="-4" y="84" width="44" height="92" rx="18" fill="url(#metal)" />
+            <path d="M-12 177h60c-2 18-17 28-34 28-19 0-30-10-26-28Z" fill="url(#metal)" />
+          </g>
+        </g>
+      </svg>
     </div>
   );
 }

@@ -327,366 +327,34 @@ code {
 
 .robot {
   position: relative;
-  width: 300px;
-  height: 430px;
+  width: min(100%, 360px);
+  max-width: 360px;
+  aspect-ratio: 18 / 25;
   margin: 0 auto;
-  filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.45));
-  transform: translateY(8px);
+  transform: translateY(8px) scale(1.02);
 }
 
-.robot-head,
-.robot-torso,
-.robot-hips,
-.robot-neck,
-.robot-upper-arm,
-.robot-elbow,
-.robot-forearm,
-.robot-thigh,
-.robot-shin,
-.robot-foot,
-.robot-ear,
-.robot-shoulder,
-.robot-hand {
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.8),
-    rgba(211, 218, 231, 0.92) 44%,
-    rgba(140, 149, 165, 0.9)
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -8px 18px rgba(0, 0, 0, 0.12);
-}
-
-.robot-antenna {
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  width: 4px;
-  height: 24px;
-  margin-left: -2px;
-  background: rgba(224, 231, 241, 0.75);
-}
-
-.robot-antenna::after {
+.robot::after {
   content: "";
   position: absolute;
-  top: -8px;
-  left: 50%;
-  width: 12px;
-  height: 12px;
-  margin-left: -6px;
-  border-radius: 999px;
-  background: var(--blue);
-  box-shadow: 0 0 18px var(--blue);
-}
-
-.robot-head {
-  position: absolute;
-  top: 30px;
-  left: 50%;
-  width: 180px;
-  height: 132px;
-  margin-left: -90px;
-  border-radius: 34px;
-}
-
-.robot-ear {
-  position: absolute;
-  top: 38px;
-  width: 24px;
-  height: 44px;
-  border-radius: 16px;
-}
-
-.robot-ear-left {
-  left: -12px;
-}
-
-.robot-ear-right {
-  right: -12px;
-}
-
-.robot-ear::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  margin-top: -5px;
-  border-radius: 999px;
-  background: var(--blue);
-  box-shadow: 0 0 10px rgba(37, 99, 235, 0.55);
-}
-
-.robot-visor {
-  position: absolute;
-  inset: 12px;
-  border-radius: 26px;
-  background: linear-gradient(180deg, #101219, #07080d);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.5);
-}
-
-.robot-face {
-  display: flex;
-  justify-content: center;
-  gap: 22px;
-  margin-top: 34px;
-}
-
-.robot-eye {
-  width: 22px;
-  height: 16px;
-  border-radius: 999px 999px 12px 12px;
-  background: #fff;
-}
-
-.robot-mouth {
-  width: 40px;
-  height: 12px;
-  margin: 18px auto 0;
-  border-bottom: 3px solid #fff;
-  border-radius: 0 0 18px 18px;
-}
-
-.robot-neck {
-  position: absolute;
-  top: 164px;
-  left: 50%;
-  width: 32px;
-  height: 18px;
-  margin-left: -16px;
-  border-radius: 12px;
-}
-
-.robot-torso {
-  position: absolute;
-  top: 188px;
-  left: 50%;
-  width: 176px;
-  height: 140px;
-  margin-left: -88px;
-  border-radius: 42px 42px 34px 34px;
-  display: grid;
-  place-items: center;
-}
-
-.robot-shoulder {
-  position: absolute;
-  top: 18px;
-  width: 34px;
-  height: 26px;
-  border-radius: 18px;
-}
-
-.robot-shoulder-left {
-  left: -16px;
-}
-
-.robot-shoulder-right {
-  right: -16px;
-}
-
-.robot-badge {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-  border-radius: 18px;
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  background: linear-gradient(
-    180deg,
-    rgba(23, 39, 88, 0.95),
-    rgba(15, 26, 61, 0.98)
+  inset: auto 12% 3% 12%;
+  height: 18%;
+  background: radial-gradient(
+    circle,
+    rgba(37, 99, 235, 0.2) 0%,
+    rgba(37, 99, 235, 0.06) 42%,
+    rgba(37, 99, 235, 0) 74%
   );
-  color: #4f8dff;
-  font-size: 30px;
-  font-weight: 700;
-  text-shadow: 0 0 14px rgba(37, 99, 235, 0.45);
+  filter: blur(10px);
+  z-index: 0;
 }
 
-.robot-arm {
-  position: absolute;
-  top: 204px;
-  width: 102px;
-  height: 146px;
-}
-
-.robot-arm-left {
-  left: -2px;
-}
-
-.robot-arm-right {
-  right: -6px;
-}
-
-.robot-upper-arm,
-.robot-elbow,
-.robot-forearm {
-  position: absolute;
-  border-radius: 999px;
-}
-
-.robot-upper-arm {
-  width: 30px;
-  height: 72px;
-  top: 0;
-}
-
-.robot-elbow {
-  width: 28px;
-  height: 28px;
-}
-
-.robot-forearm {
-  width: 28px;
-  height: 64px;
-}
-
-.robot-arm-left .robot-upper-arm {
-  left: 54px;
-  transform: rotate(20deg);
-}
-
-.robot-arm-left .robot-elbow {
-  left: 42px;
-  top: 64px;
-}
-
-.robot-arm-left .robot-forearm {
-  left: 24px;
-  top: 78px;
-  transform: rotate(42deg);
-}
-
-.robot-arm-right .robot-upper-arm {
-  right: 54px;
-  transform: rotate(-36deg);
-}
-
-.robot-arm-right .robot-elbow {
-  right: 36px;
-  top: 52px;
-}
-
-.robot-arm-right .robot-forearm {
-  right: 24px;
-  top: 26px;
-  transform: rotate(-12deg);
-}
-
-.robot-hand {
-  position: absolute;
-  width: 30px;
-  height: 34px;
-  border-radius: 18px;
-}
-
-.robot-hand-hip {
-  left: 8px;
-  top: 118px;
-  transform: rotate(14deg);
-}
-
-.robot-hand-thumbs-up {
-  right: 10px;
-  top: -2px;
-}
-
-.robot-thumb {
-  position: absolute;
-  top: -8px;
-  right: 4px;
-  width: 12px;
-  height: 20px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.8),
-    rgba(140, 149, 165, 0.9)
-  );
-}
-
-.robot-hips {
-  position: absolute;
-  top: 334px;
-  left: 50%;
-  width: 122px;
-  height: 28px;
-  margin-left: -61px;
-  border-radius: 16px;
-}
-
-.robot-leg {
-  position: absolute;
-  top: 350px;
-  width: 82px;
-  height: 118px;
-}
-
-.robot-leg-left {
-  left: 74px;
-}
-
-.robot-leg-right {
-  right: 74px;
-}
-
-.robot-thigh,
-.robot-shin {
-  position: absolute;
-  width: 34px;
-  border-radius: 22px;
-}
-
-.robot-thigh {
-  top: 0;
-  height: 48px;
-}
-
-.robot-shin {
-  top: 42px;
-  height: 68px;
-}
-
-.robot-leg-left .robot-thigh,
-.robot-leg-left .robot-shin {
-  left: 24px;
-  transform: rotate(3deg);
-}
-
-.robot-leg-right .robot-thigh,
-.robot-leg-right .robot-shin {
-  right: 24px;
-  transform: rotate(-3deg);
-}
-
-.robot-knee-cap {
-  position: absolute;
-  top: 44px;
-  left: 50%;
-  width: 24px;
-  height: 24px;
-  margin-left: -12px;
-  border-radius: 999px;
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  background: radial-gradient(circle at 35% 35%, #5b9aff, #1f4db8 72%);
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.24);
-}
-
-.robot-foot {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 54px;
-  height: 22px;
-  margin-left: -27px;
-  border-radius: 22px 22px 16px 16px;
+.robot-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .accordion-stack {
@@ -1121,6 +789,7 @@ code {
   }
 
   .robot {
+    max-width: 320px;
     transform: none;
   }
 
