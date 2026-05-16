@@ -59,14 +59,19 @@ class NIMNemotronClient:
     ) -> dict[str, Any]:
         """Call NIM with a system+user prompt and parse the JSON response.
 
-        The `detailed_thinking` flag is opt-in. When True, the legacy
-        "detailed thinking on\\n\\n" prefix is prepended to the system
-        message — this was needed when NVIDIA's API surfaced reasoning only
-        inline. The API now exposes reasoning in dedicated `message.reasoning`
-        and `message.reasoning_content` fields, so the prefix is no longer
-        required for the model to reason. Leave it False unless you have a
-        specific reason: on long prompts the prefix can crowd out output
-        tokens and has been seen producing empty `{"":""}` responses.
+        The `detailed_thinking` flag is opt-in and prompt-pattern dependent.
+        When True, the legacy "detailed thinking on\\n\\n" prefix is prepended
+        to the system message — Nemotron Super needs this for audit-style
+        prompts (full-file analysis, long context) or the model emits
+        placeholder JSON like {"findings": [{"": ""}]} instead of real content.
+
+        Prompts that include a one-shot example or are otherwise short/well-
+        structured can work with detailed_thinking=False (this is what
+        fix-proposer/proposer.py relies on).
+
+        Recommendation: keep False as a default, opt in for full-file or
+        audit-style prompts. If you see {"":""} responses, try flipping it
+        to True.
 
         `temperature` defaults to 0.2 when not passed; pass 0.0 for
         deterministic output (e.g., reproducible evals or bug repros).
