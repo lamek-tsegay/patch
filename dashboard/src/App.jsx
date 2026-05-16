@@ -94,16 +94,12 @@ export default function App() {
     async function hydrateDashboard() {
       try {
         const nextState = await loadDashboardData();
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
         setDashboardState(nextState);
         setSelectedProposalId(nextState.fixProposals[0]?.proposal_id ?? "");
         setLoadingState("ready");
       } catch (error) {
-        if (!isActive) {
-          return;
-        }
+        if (!isActive) return;
         setLoadError(error instanceof Error ? error.message : "failed to load");
         setLoadingState("error");
       }
@@ -117,17 +113,12 @@ export default function App() {
   }, []);
 
   async function handleStageFix() {
-    if (!dashboardState?.selectedFinding || !selectedProposalId) {
-      return;
-    }
+    if (!dashboardState?.selectedFinding || !selectedProposalId) return;
 
     const proposal = dashboardState.fixProposals.find(
       (item) => item.proposal_id === selectedProposalId,
     );
-
-    if (!proposal) {
-      return;
-    }
+    if (!proposal) return;
 
     setActionState("staging");
     setActionError("");
@@ -154,17 +145,12 @@ export default function App() {
   }
 
   async function handleHumanApprove() {
-    if (!dashboardState?.selectedFinding || !selectedProposalId) {
-      return;
-    }
+    if (!dashboardState?.selectedFinding || !selectedProposalId) return;
 
     const proposal = dashboardState.fixProposals.find(
       (item) => item.proposal_id === selectedProposalId,
     );
-
-    if (!proposal) {
-      return;
-    }
+    if (!proposal) return;
 
     setActionState("approving");
     setActionError("");
@@ -201,141 +187,9 @@ export default function App() {
   );
 
   const sections = useMemo(() => {
-    if (!dashboardState) {
-      return [];
-    }
-
-    const selectedFinding = dashboardState.selectedFinding;
+    if (!dashboardState) return [];
 
     return [
-      {
-        id: "findings",
-        title: "findings",
-        summary: `${dashboardState.findings.length} findings · contract-shaped payloads`,
-        content: selectedFinding ? (
-          <div className="finding-card">
-            <div className="finding-heading">
-              <div>
-              <p className="eyebrow critical">{selectedFinding.severity}</p>
-                <h3>raw sql query reachable from login form</h3>
-                <p className="finding-path">
-                  {selectedFinding.file}:{selectedFinding.line_start}
-                </p>
-              </div>
-              <span className="live-indicator">selected</span>
-            </div>
-
-            <p className="finding-description">{selectedFinding.description}</p>
-
-            <div className="finding-meta">
-              <div>
-                <p className="mini-label">category</p>
-                <p>{selectedFinding.category}</p>
-              </div>
-              <div>
-                <p className="mini-label">confidence</p>
-                <p>{selectedFinding.confidence}</p>
-              </div>
-              <div>
-                <p className="mini-label">cwe</p>
-                <p>{selectedFinding.cwe}</p>
-              </div>
-            </div>
-
-            <div className="evidence-strip">
-              <p className="mini-label">exploit path</p>
-              <p>{selectedFinding.exploit_path}</p>
-            </div>
-
-            <div className="fix-list">
-              <p className="mini-label">three ranked fix options</p>
-              {dashboardState.fixProposals.map((proposal) => (
-                <button
-                  className={`fix-row ${
-                    selectedProposalId === proposal.proposal_id ? "selected" : ""
-                  }`}
-                  key={proposal.proposal_id}
-                  onClick={() => setSelectedProposalId(proposal.proposal_id)}
-                  type="button"
-                >
-                  <span className="fix-rank">{proposal.rank}</span>
-                  <span className="fix-copy">
-                    <strong>{proposal.title}</strong>
-                    <small>{proposal.rationale}</small>
-                  </span>
-                  <span
-                    className={`risk-chip risk-${proposal.breaking_change_risk}`}
-                  >
-                    {proposal.breaking_change_risk}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="approval-banner">
-              <span className={`approval-pill state-${dashboardState.approvalState}`}>
-                {dashboardState.approvalState}
-              </span>
-              <p>
-                call <code>commit_fix(finding, proposal)</code> first, then only
-                call <code>commit_fix_approved()</code> when a human confirms.
-              </p>
-            </div>
-
-            <div className="action-row">
-              <button
-                className="primary-button"
-                disabled={actionState === "staging" || actionState === "approving"}
-                onClick={handleStageFix}
-                type="button"
-              >
-                {actionState === "staging"
-                  ? "staging fix..."
-                  : "stage fix for approval"}
-              </button>
-              <button
-                className="ghost-button"
-                disabled={dashboardState.approvalState !== "awaiting_approval"}
-                onClick={handleHumanApprove}
-                type="button"
-              >
-                {actionState === "approving"
-                  ? "approving..."
-                  : "human approve commit"}
-              </button>
-            </div>
-
-            {actionError ? (
-              <div className="hero-notice error-notice inline-notice">
-                <strong>approval flow failed</strong>
-                <p>{actionError}</p>
-              </div>
-            ) : null}
-
-            <div className="queue-list">
-              <p className="mini-label">queue</p>
-              {dashboardState.findings.slice(1).map((finding) => (
-                <div className="queue-row" key={finding.finding_id}>
-                  <span className={`severity-pill severity-${finding.severity}`}>
-                    {finding.severity}
-                  </span>
-                  <div>
-                    <strong>{finding.category}</strong>
-                    <small>
-                      {finding.file}:{finding.line_start}
-                    </small>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="empty-state">
-            <strong>no findings loaded</strong>
-            <p>waiting for serialized Finding payloads from the detector.</p>
-          </div>
-        ),
-      },
       {
         id: "reasoning",
         title: "reasoning",
@@ -467,7 +321,9 @@ export default function App() {
               <div className="stat-card" key={stat.label}>
                 <span>{stat.label}</span>
                 <strong>{stat.value}</strong>
-                <small>{stat.label === "approval state" ? "policy enforced" : "live"}</small>
+                <small>
+                  {stat.label === "approval state" ? "policy enforced" : "live"}
+                </small>
               </div>
             ))}
           </div>
@@ -622,33 +478,31 @@ export default function App() {
           </div>
         </div>
 
-        {sections
-          .filter((section) => section.id !== "findings")
-          .map((section, index) => {
-            const isOpen = openSection === section.id;
-            return (
-              <div className="screen-block collapsed-block" key={section.id}>
-                <button
-                  className="collapsed-heading"
-                  onClick={() => setOpenSection(isOpen ? "" : section.id)}
-                  type="button"
-                >
-                  <div className="section-index">
-                    <span>{String(index + 2).padStart(2, "0")}</span>
-                    <h2>{section.title}</h2>
-                    {section.id === "reasoning" ? <b>live</b> : null}
-                    {section.id === "policy" ? <b>2 events</b> : null}
-                    {section.id === "audit" ? <b>8 events</b> : null}
-                  </div>
-                  <div className="collapsed-summary">
-                    <span>{section.summary}</span>
-                    <span>{isOpen ? "⌃" : "⌄"}</span>
-                  </div>
-                </button>
-                {isOpen ? <div className="accordion-panel inline-panel">{section.content}</div> : null}
-              </div>
-            );
-          })}
+        {sections.map((section, index) => {
+          const isOpen = openSection === section.id;
+          return (
+            <div className="screen-block collapsed-block" key={section.id}>
+              <button
+                className="collapsed-heading"
+                onClick={() => setOpenSection(isOpen ? "" : section.id)}
+                type="button"
+              >
+                <div className="section-index">
+                  <span>{String(index + 2).padStart(2, "0")}</span>
+                  <h2>{section.title}</h2>
+                  {section.id === "reasoning" ? <b>live</b> : null}
+                  {section.id === "policy" ? <b>2 events</b> : null}
+                  {section.id === "audit" ? <b>8 events</b> : null}
+                </div>
+                <div className="collapsed-summary">
+                  <span>{section.summary}</span>
+                  <span>{isOpen ? "⌃" : "⌄"}</span>
+                </div>
+              </button>
+              {isOpen ? <div className="accordion-panel inline-panel">{section.content}</div> : null}
+            </div>
+          );
+        })}
       </section>
     </main>
   );
