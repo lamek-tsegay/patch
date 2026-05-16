@@ -165,3 +165,12 @@ class FixProposal(BaseModel):
     breaking_change_risk: BreakingChangeRisk
     patches: list[SearchReplacePatch] = Field(min_length=1)
     created_at: datetime | None = None
+
+class PolicyEvent(BaseModel):
+    timestamp: datetime
+    action: str
+    allowed: bool
+    reason: str
+    finding_id: UUID | None = None
+
+    model_config = {"frozen": True}
