@@ -43,6 +43,15 @@ button {
   font: inherit;
 }
 
+code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #dbe6ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
 .app-shell {
   width: min(1160px, calc(100vw - 40px));
   margin: 0 auto;
@@ -200,6 +209,10 @@ button {
   border-color: rgba(37, 99, 235, 0.34);
 }
 
+.inline-notice {
+  margin-top: 14px;
+}
+
 .primary-button,
 .ghost-button,
 .fix-row {
@@ -216,6 +229,14 @@ button {
   border-radius: 999px;
   cursor: pointer;
   text-transform: lowercase;
+}
+
+.primary-button:disabled,
+.ghost-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .primary-button {
@@ -813,6 +834,11 @@ button {
   background: rgba(37, 99, 235, 0.08);
 }
 
+.fix-row.selected {
+  border-color: rgba(37, 99, 235, 0.52);
+  background: rgba(37, 99, 235, 0.12);
+}
+
 .fix-rank {
   display: grid;
   place-items: center;
@@ -863,6 +889,44 @@ button {
 
 .action-row {
   margin-top: 22px;
+}
+
+.approval-banner {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.approval-banner p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  text-transform: lowercase;
+}
+
+.approval-pill {
+  width: fit-content;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  text-transform: lowercase;
+}
+
+.state-idle {
+  color: var(--muted);
+}
+
+.state-awaiting_approval {
+  color: #ffd27d;
+}
+
+.state-approved {
+  color: #8ec5ff;
 }
 
 .queue-list {

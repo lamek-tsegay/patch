@@ -142,6 +142,7 @@ const mockData = {
     policy_source: "mock policy stream",
     live: true,
   },
+  approval_state: "idle",
 };
 
 function sortFindings(findings) {
@@ -167,6 +168,7 @@ function normalizeDashboardData(input) {
     reasoningTrace: input.reasoning_trace ?? [],
     policyEvents: input.policy_events ?? [],
     auditTrail: input.audit_trail ?? [],
+    approvalState: input.approval_state ?? "idle",
     metadata: {
       findingSource: input.metadata?.finding_source ?? "sqlite ./patch.db",
       traceSource: input.metadata?.trace_source ?? "trace stream pending",
@@ -207,4 +209,83 @@ export async function loadDashboardData() {
       return { source: "mock fallback", ...normalizeDashboardData(mockData) };
     }
   }
+}
+
+function withEventMarkers(events) {
+  return events.map((event, index) => ({
+    id: `event-${index}-${event.summary}`,
+    ...event,
+  }));
+}
+
+export async function commitFix(finding, proposal) {
+  const events = withEventMarkers([
+    {
+      verdict: "allow",
+      summary: `severity_check:${finding.severity}`,
+      note: "escalated to human",
+    },
+    {
+      verdict: "block",
+      summary: "commit_to_branch",
+      note: "awaiting human approval",
+    },
+    {
+      verdict: "block",
+      summary: "open_pull_request",
+      note: "awaiting human approval",
+    },
+  ]);
+
+  return {
+    status: "awaiting_approval",
+    selectedProposalId: proposal.proposal_id,
+    events,
+    auditEntries: [
+      {
+        timestamp: "10:41:14",
+        event: `commit_fix staged rank ${proposal.rank} for ${finding.category}`,
+      },
+      {
+        timestamp: "10:41:15",
+        event: "policy gate blocked commit until human approval",
+      },
+    ],
+  };
+}
+
+export async function commitFixApproved(finding, proposal) {
+  const events = withEventMarkers([
+    {
+      verdict: "allow",
+      summary: `severity_check:${finding.severity}`,
+      note: "human escalation acknowledged",
+    },
+    {
+      verdict: "allow",
+      summary: "commit_to_branch",
+      note: "approved by human click",
+    },
+    {
+      verdict: "allow",
+      summary: "open_pull_request",
+      note: "approved by human click",
+    },
+  ]);
+
+  return {
+    status: "approved",
+    selectedProposalId: proposal.proposal_id,
+    events,
+    auditEntries: [
+      {
+        timestamp: "10:41:18",
+        event: `commit_fix_approved executed rank ${proposal.rank} for ${finding.category}`,
+      },
+      {
+        timestamp: "10:41:19",
+        event: "commit opened branch and prepared pull request",
+      },
+    ],
+  };
 }

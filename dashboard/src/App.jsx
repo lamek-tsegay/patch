@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadDashboardData } from "./lib/dashboardData";
+import {
+  commitFix,
+  commitFixApproved,
+  loadDashboardData,
+} from "./lib/dashboardData";
 
 function RobotMascot() {
   return (
@@ -71,7 +75,7 @@ function buildStats(data) {
     { label: "active findings", value: String(findingCount) },
     { label: "policy blocks", value: String(blockedCount) },
     { label: "ranked fixes ready", value: String(proposalCount) },
-    { label: "approval state", value: proposalCount ? "awaiting" : "idle" },
+    { label: "approval state", value: data.approvalState ?? "idle" },
   ];
 }
 
@@ -80,6 +84,9 @@ export default function App() {
   const [dashboardState, setDashboardState] = useState(null);
   const [loadingState, setLoadingState] = useState("loading");
   const [loadError, setLoadError] = useState("");
+  const [selectedProposalId, setSelectedProposalId] = useState("");
+  const [actionState, setActionState] = useState("idle");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     let isActive = true;
@@ -91,6 +98,7 @@ export default function App() {
           return;
         }
         setDashboardState(nextState);
+        setSelectedProposalId(nextState.fixProposals[0]?.proposal_id ?? "");
         setLoadingState("ready");
       } catch (error) {
         if (!isActive) {
@@ -107,6 +115,85 @@ export default function App() {
       isActive = false;
     };
   }, []);
+
+  async function handleStageFix() {
+    if (!dashboardState?.selectedFinding || !selectedProposalId) {
+      return;
+    }
+
+    const proposal = dashboardState.fixProposals.find(
+      (item) => item.proposal_id === selectedProposalId,
+    );
+
+    if (!proposal) {
+      return;
+    }
+
+    setActionState("staging");
+    setActionError("");
+
+    try {
+      const result = await commitFix(dashboardState.selectedFinding, proposal);
+      setDashboardState((current) =>
+        current
+          ? {
+              ...current,
+              approvalState: result.status,
+              selectedProposalId: result.selectedProposalId,
+              policyEvents: result.events,
+              auditTrail: [...result.auditEntries, ...current.auditTrail],
+            }
+          : current,
+      );
+      setActionState("awaiting_approval");
+      setOpenSection("policy");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "failed to stage fix");
+      setActionState("error");
+    }
+  }
+
+  async function handleHumanApprove() {
+    if (!dashboardState?.selectedFinding || !selectedProposalId) {
+      return;
+    }
+
+    const proposal = dashboardState.fixProposals.find(
+      (item) => item.proposal_id === selectedProposalId,
+    );
+
+    if (!proposal) {
+      return;
+    }
+
+    setActionState("approving");
+    setActionError("");
+
+    try {
+      const result = await commitFixApproved(
+        dashboardState.selectedFinding,
+        proposal,
+      );
+      setDashboardState((current) =>
+        current
+          ? {
+              ...current,
+              approvalState: result.status,
+              selectedProposalId: result.selectedProposalId,
+              policyEvents: result.events,
+              auditTrail: [...result.auditEntries, ...current.auditTrail],
+            }
+          : current,
+      );
+      setActionState("approved");
+      setOpenSection("audit");
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "failed to approve fix",
+      );
+      setActionState("error");
+    }
+  }
 
   const stats = useMemo(
     () => (dashboardState ? buildStats(dashboardState) : []),
@@ -129,7 +216,7 @@ export default function App() {
           <div className="finding-card">
             <div className="finding-heading">
               <div>
-                <p className="eyebrow critical">{selectedFinding.severity}</p>
+              <p className="eyebrow critical">{selectedFinding.severity}</p>
                 <h3>raw sql query reachable from login form</h3>
                 <p className="finding-path">
                   {selectedFinding.file}:{selectedFinding.line_start}
@@ -163,7 +250,14 @@ export default function App() {
             <div className="fix-list">
               <p className="mini-label">three ranked fix options</p>
               {dashboardState.fixProposals.map((proposal) => (
-                <button className="fix-row" key={proposal.proposal_id} type="button">
+                <button
+                  className={`fix-row ${
+                    selectedProposalId === proposal.proposal_id ? "selected" : ""
+                  }`}
+                  key={proposal.proposal_id}
+                  onClick={() => setSelectedProposalId(proposal.proposal_id)}
+                  type="button"
+                >
                   <span className="fix-rank">{proposal.rank}</span>
                   <span className="fix-copy">
                     <strong>{proposal.title}</strong>
@@ -178,14 +272,45 @@ export default function App() {
               ))}
             </div>
 
+            <div className="approval-banner">
+              <span className={`approval-pill state-${dashboardState.approvalState}`}>
+                {dashboardState.approvalState}
+              </span>
+              <p>
+                call <code>commit_fix(finding, proposal)</code> first, then only
+                call <code>commit_fix_approved()</code> when a human confirms.
+              </p>
+            </div>
+
             <div className="action-row">
-              <button className="primary-button" type="button">
-                approve rank 1
+              <button
+                className="primary-button"
+                disabled={actionState === "staging" || actionState === "approving"}
+                onClick={handleStageFix}
+                type="button"
+              >
+                {actionState === "staging"
+                  ? "staging fix..."
+                  : "stage fix for approval"}
               </button>
-              <button className="ghost-button" type="button">
-                review diff
+              <button
+                className="ghost-button"
+                disabled={dashboardState.approvalState !== "awaiting_approval"}
+                onClick={handleHumanApprove}
+                type="button"
+              >
+                {actionState === "approving"
+                  ? "approving..."
+                  : "human approve commit"}
               </button>
             </div>
+
+            {actionError ? (
+              <div className="hero-notice error-notice inline-notice">
+                <strong>approval flow failed</strong>
+                <p>{actionError}</p>
+              </div>
+            ) : null}
 
             <div className="queue-list">
               <p className="mini-label">queue</p>
@@ -288,6 +413,9 @@ export default function App() {
           </span>
           <span className="tiny-chip">
             {dashboardState ? `source ${dashboardState.source}` : "loading data"}
+          </span>
+          <span className="tiny-chip">
+            {dashboardState?.approvalState ?? "approval idle"}
           </span>
           <div className="status-pill">
             <span className="status-dot" />
