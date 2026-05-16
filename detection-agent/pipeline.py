@@ -81,6 +81,12 @@ def scan_file(
             logger.warning("dropped non-dict finding for %s: %r", display_file, raw)
             continue
 
+        # Drop malformed findings with empty string keys (model artifact)
+        raw = {k: v for k, v in raw.items() if k != ""}
+        if not raw or len(raw) <= 2:
+            counts["dropped_validation"] += 1
+            continue
+
         # Overwrite file path: the model may emit absolute paths, wrong
         # paths, or paraphrased paths. We know the truth — substitute it.
         raw["file"] = display_file

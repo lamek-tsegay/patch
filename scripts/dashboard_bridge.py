@@ -143,37 +143,36 @@ def _seed_findings_if_needed() -> list[dict[str, Any]]:
 
 
 def _load_fix_proposals(finding_id: str) -> list[dict[str, Any]]:
+    conn = sqlite3.connect(PATCH_DB)
+    rows = conn.execute(
+        """SELECT proposal_id, finding_id, rank, strategy, title, rationale,
+                  tradeoffs, breaking_change_risk, patches_json, created_at
+           FROM fix_proposals WHERE finding_id = ? ORDER BY rank""",
+        (finding_id,)
+    ).fetchall()
+    conn.close()
+
+    if rows:
+        return [
+            {
+                "proposal_id": r[0],
+                "finding_id": r[1],
+                "rank": r[2],
+                "strategy": r[3],
+                "title": r[4],
+                "rationale": r[5],
+                "tradeoffs": r[6],
+                "breaking_change_risk": r[7],
+                "patches": json.loads(r[8]) if r[8] else [],
+                "created_at": r[9],
+            }
+            for r in rows
+        ]
+
+    # fallback to fixture if no DB proposals
     proposal = json.loads(FIXTURE_PROPOSAL.read_text())
     proposal["finding_id"] = finding_id
-    proposal["rank"] = 1
-
-    return [
-        proposal,
-        {
-            "proposal_id": "30b0d4dc-9499-43aa-95ca-3997fd8ac59d",
-            "finding_id": finding_id,
-            "strategy": "orm_migration",
-            "rank": 2,
-            "title": "Move login lookup into a typed auth helper",
-            "rationale": "Encapsulate the query in a safe helper so future callers reuse the parameterized access pattern.",
-            "tradeoffs": "Touches more code than rank 1 and requires light caller cleanup.",
-            "breaking_change_risk": "medium",
-            "patches": proposal["patches"],
-            "created_at": "2026-05-16T10:20:00Z",
-        },
-        {
-            "proposal_id": "eb8ddb1c-197b-4d78-b4c3-f9b0ec8249f0",
-            "finding_id": finding_id,
-            "strategy": "input_allowlist",
-            "rank": 3,
-            "title": "Add an input sanitization layer before query build",
-            "rationale": "Validate the login email aggressively before the query path to reduce the exploit surface immediately.",
-            "tradeoffs": "Useful defense-in-depth, but weaker than full parameterization on its own.",
-            "breaking_change_risk": "medium",
-            "patches": proposal["patches"],
-            "created_at": "2026-05-16T10:22:00Z",
-        },
-    ]
+    return [proposal]
 
 
 def _build_dashboard_state() -> dict[str, Any]:
@@ -311,10 +310,29 @@ def _handle_commit(command: str) -> dict[str, Any]:
         return _fallback_commit(command, payload)
 
 
+
+
+def _handle_scan() -> dict[str, Any]:
+    import subprocess
+    scanner_path = ROOT / "detection-agent" / "scanner.py"
+    result = subprocess.run(
+        [sys.executable, str(scanner_path), "--repo", str(ROOT / "demo-repo-fast"), "--db", str(PATCH_DB)],
+        capture_output=True,
+        text=True,
+        cwd=str(ROOT),
+    )
+    if result.returncode != 0:
+        return {"status": "error", "reason": result.stderr or "scanner failed"}
+    return {"status": "success", "message": "scan complete"}
+
 def main() -> None:
     command = sys.argv[1] if len(sys.argv) > 1 else "state"
     if command == "state":
         print(json.dumps(_build_dashboard_state()))
+        return
+
+    if command == "scan":
+        print(json.dumps(_handle_scan()))
         return
 
     if command in {"commit-fix", "commit-fix-approved"}:
@@ -326,3 +344,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
