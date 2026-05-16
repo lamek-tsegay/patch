@@ -34,6 +34,7 @@ class NemotronClient(Protocol):
         schema: dict[str, Any] | None = None,
         max_tokens: int = 2048,
         detailed_thinking: bool = False,
+        temperature: float | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -54,6 +55,7 @@ class NIMNemotronClient:
         schema: dict[str, Any] | None = None,
         max_tokens: int = 2048,
         detailed_thinking: bool = False,
+        temperature: float | None = None,
     ) -> dict[str, Any]:
         """Call NIM with a system+user prompt and parse the JSON response.
 
@@ -65,6 +67,9 @@ class NIMNemotronClient:
         required for the model to reason. Leave it False unless you have a
         specific reason: on long prompts the prefix can crowd out output
         tokens and has been seen producing empty `{"":""}` responses.
+
+        `temperature` defaults to 0.2 when not passed; pass 0.0 for
+        deterministic output (e.g., reproducible evals or bug repros).
         """
         if max_tokens < MIN_MAX_TOKENS:
             raise ValueError(
@@ -80,7 +85,7 @@ class NIMNemotronClient:
             {"role": "system", "content": system_content},
             {"role": "user", "content": user},
         ]
-        raw = self._call(model, messages, max_tokens)
+        raw = self._call(model, messages, max_tokens, temperature)
         try:
             parsed = json.loads(_strip_code_fences(raw))
             _dump_raw_response(user, raw)
@@ -96,18 +101,24 @@ class NIMNemotronClient:
             )
             messages.append({"role": "assistant", "content": raw})
             messages.append({"role": "user", "content": repair})
-            raw2 = self._call(model, messages, max_tokens)
+            raw2 = self._call(model, messages, max_tokens, temperature)
             parsed = json.loads(_strip_code_fences(raw2))
             _dump_raw_response(user, raw2)
             return parsed
 
-    def _call(self, model: str, messages: list[dict[str, str]], max_tokens: int) -> str:
+    def _call(
+        self,
+        model: str,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        temperature: float | None,
+    ) -> str:
         t0 = time.perf_counter()
         resp = self._client.chat.completions.create(
             model=model,
             messages=messages,
             response_format={"type": "json_object"},
-            temperature=0.2,
+            temperature=temperature if temperature is not None else 0.2,
             max_tokens=max_tokens,
         )
         latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -178,6 +189,7 @@ class MockNemotronClient:
         schema: dict[str, Any] | None = None,
         max_tokens: int = 2048,
         detailed_thinking: bool = False,
+        temperature: float | None = None,
     ) -> dict[str, Any]:
         for marker, response in self._responses.items():
             if marker in user:

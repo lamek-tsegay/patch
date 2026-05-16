@@ -55,6 +55,8 @@ resp = client.chat.completions.create(
 )
 ```
 
+Note: `NIMNemotronClient.generate_json` defaults to `temperature=0.2` but accepts a per-call `temperature` parameter — pass `0.0` for deterministic or reproducible output.
+
 ## Env vars (already in .env.example)
 - `NIM_ENDPOINT` — base URL (https://integrate.api.nvidia.com/v1)
 - `NIM_API_KEY` — auth, fill in after Brev is up
