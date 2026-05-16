@@ -1,0 +1,52 @@
+# NemoClaw Policy — Patch Security Agent
+# Every agent action passes through these rules first.
+# Blocked actions are emitted as events to the dashboard.
+
+version: "1.0"
+agent: patch
+
+rules:
+
+  filesystem:
+    allow_read:
+      - "./demo-repo/**"
+      - "./shared/**"
+    deny_read:
+      - "**/.env"
+      - "**/secrets/**"
+    allow_write:
+      - none
+    comment: "Agent reads code. Never writes directly. Commits go through human approval only."
+
+  git:
+    allow:
+      - create_branch
+      - commit_to_branch
+      - open_pull_request
+    deny:
+      - push_to_main
+      - force_push
+      - delete_branch
+    comment: "Agent can propose changes via PR. Never touches main directly."
+
+  network:
+    allow:
+      - "integrate.api.nvidia.com"
+      - "api.github.com"
+    deny:
+      - "*"
+    comment: "Agent only talks to NIM and GitHub. Nothing else."
+
+  human_gate:
+    required_for:
+      - commit_to_branch
+      - open_pull_request
+    comment: "No code change happens without explicit human approval logged in the database."
+
+  severity_thresholds:
+    auto_escalate_to_human:
+      - critical
+      - high
+    suppress:
+      - none
+    comment: "All findings surface to human. Critical and high get flagged urgently."
