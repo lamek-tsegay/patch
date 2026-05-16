@@ -396,6 +396,9 @@ export default function App() {
     ];
   }, [dashboardState]);
 
+  const selectedFinding = dashboardState?.selectedFinding;
+  const queuedFindings = dashboardState?.findings.slice(1) ?? [];
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -424,26 +427,25 @@ export default function App() {
         </div>
       </header>
 
-      <section className="hero">
+      <section className="hero home-screen" id="home">
         <div className="hero-text">
-          <p className="eyebrow">bk dashboard · integration-ready</p>
           <h1>
             patch secures
             <br />
             your code.
           </h1>
           <p>
-            live findings, ranked fix proposals, visible policy control, and a
-            clean approval path built for the demo room.
+            autonomous vulnerability detection and ranked fixes, under your
+            control.
           </p>
 
           <div className="hero-actions">
-            <button className="primary-button" type="button">
+            <a className="primary-button button-link" href="#findings-screen">
               run scan
-            </button>
-            <button className="ghost-button" type="button">
+            </a>
+            <a className="ghost-button button-link" href="#findings-screen">
               open findings
-            </button>
+            </a>
           </div>
 
           {loadingState === "error" ? (
@@ -465,6 +467,7 @@ export default function App() {
               <div className="stat-card" key={stat.label}>
                 <span>{stat.label}</span>
                 <strong>{stat.value}</strong>
+                <small>{stat.label === "approval state" ? "policy enforced" : "live"}</small>
               </div>
             ))}
           </div>
@@ -475,30 +478,177 @@ export default function App() {
         </div>
       </section>
 
-      <section className="accordion-stack">
-        {sections.map((section) => {
-          const isOpen = openSection === section.id;
+      <section className="details-screen" id="findings-screen">
+        <div className="screen-block">
+          <div className="screen-heading">
+            <div className="section-index">
+              <span>01</span>
+              <h2>findings</h2>
+              <b>{dashboardState?.findings.length ?? 0}</b>
+            </div>
+            <button
+              className="section-collapse"
+              onClick={() => setOpenSection(openSection === "findings" ? "" : "findings")}
+              type="button"
+            >
+              {openSection === "findings" ? "⌃" : "⌄"}
+            </button>
+          </div>
 
-          return (
-            <div className={`accordion ${isOpen ? "open" : ""}`} key={section.id}>
-              <button
-                className="accordion-trigger"
-                onClick={() => setOpenSection(isOpen ? "" : section.id)}
-                type="button"
-              >
-                <div className="accordion-labels">
-                  <span className="accordion-title">{section.title}</span>
-                  <span className="accordion-summary">{section.summary}</span>
+          {openSection === "findings" && selectedFinding ? (
+            <div className="feature-panel">
+              <div className="feature-header">
+                <div className="feature-title">
+                  <span className="severity-mark severity-critical">critical</span>
+                  <h3>sql injection</h3>
+                  <p>
+                    {selectedFinding.file}:{selectedFinding.line_start}
+                  </p>
                 </div>
-                <span className="accordion-symbol">{isOpen ? "−" : "+"}</span>
-              </button>
 
-              {isOpen ? (
-                <div className="accordion-panel">{section.content}</div>
+                <div className="feature-meta-grid">
+                  <div>
+                    <span>category</span>
+                    <strong>{selectedFinding.category}</strong>
+                  </div>
+                  <div>
+                    <span>confidence</span>
+                    <strong>{selectedFinding.confidence.toFixed(2)}</strong>
+                  </div>
+                  <div>
+                    <span>first seen</span>
+                    <strong>10:12:45</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="feature-strip">
+                <span>exploit path</span>
+                <p>{selectedFinding.exploit_path}</p>
+                <button className="mini-link" type="button">
+                  view details
+                </button>
+              </div>
+
+              <div className="feature-fixes">
+                <span className="mini-label">ranked fix options</span>
+                {dashboardState.fixProposals.map((proposal) => (
+                  <button
+                    className={`feature-fix-row ${
+                      selectedProposalId === proposal.proposal_id ? "selected" : ""
+                    }`}
+                    key={proposal.proposal_id}
+                    onClick={() => setSelectedProposalId(proposal.proposal_id)}
+                    type="button"
+                  >
+                    <span className="feature-rank">{proposal.rank}</span>
+                    <span className="feature-copy">
+                      <strong>{proposal.title}</strong>
+                      <small>{proposal.rationale}</small>
+                    </span>
+                    <span className={`effort-pill effort-${proposal.breaking_change_risk}`}>
+                      {proposal.breaking_change_risk === "low"
+                        ? "low effort"
+                        : proposal.breaking_change_risk === "medium"
+                          ? "medium effort"
+                          : "higher effort"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="approval-banner">
+                <span className={`approval-pill state-${dashboardState.approvalState}`}>
+                  {dashboardState.approvalState}
+                </span>
+                <p>
+                  blocked events come from <code>commit_fix(finding, proposal)</code>.
+                  final approval comes from <code>commit_fix_approved()</code>.
+                </p>
+              </div>
+
+              <div className="action-row">
+                <button
+                  className="primary-button"
+                  disabled={actionState === "staging" || actionState === "approving"}
+                  onClick={handleStageFix}
+                  type="button"
+                >
+                  {actionState === "staging"
+                    ? "staging fix..."
+                    : "approve rank 1"}
+                </button>
+                <button className="ghost-button" type="button">
+                  review diff
+                </button>
+                <button
+                  className="ghost-button"
+                  disabled={dashboardState.approvalState !== "awaiting_approval"}
+                  onClick={handleHumanApprove}
+                  type="button"
+                >
+                  {actionState === "approving"
+                    ? "approving..."
+                    : "human approve commit"}
+                </button>
+              </div>
+
+              {actionError ? (
+                <div className="hero-notice error-notice inline-notice">
+                  <strong>approval flow failed</strong>
+                  <p>{actionError}</p>
+                </div>
               ) : null}
             </div>
-          );
-        })}
+          ) : null}
+
+          <div className="stacked-list">
+            {queuedFindings.map((finding) => (
+              <div className="collapsed-finding-row" key={finding.finding_id}>
+                <span className={`severity-mark severity-${finding.severity}`}>
+                  {finding.severity}
+                </span>
+                <strong>{finding.category.replace("_", " ")}</strong>
+                <span>
+                  {finding.file}:{finding.line_start}
+                </span>
+                <span>{finding.category}</span>
+                <span>{finding.severity === "high" ? "5m ago" : "18m ago"}</span>
+                <button className="row-arrow" type="button">
+                  ›
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {sections
+          .filter((section) => section.id !== "findings")
+          .map((section, index) => {
+            const isOpen = openSection === section.id;
+            return (
+              <div className="screen-block collapsed-block" key={section.id}>
+                <button
+                  className="collapsed-heading"
+                  onClick={() => setOpenSection(isOpen ? "" : section.id)}
+                  type="button"
+                >
+                  <div className="section-index">
+                    <span>{String(index + 2).padStart(2, "0")}</span>
+                    <h2>{section.title}</h2>
+                    {section.id === "reasoning" ? <b>live</b> : null}
+                    {section.id === "policy" ? <b>2 events</b> : null}
+                    {section.id === "audit" ? <b>8 events</b> : null}
+                  </div>
+                  <div className="collapsed-summary">
+                    <span>{section.summary}</span>
+                    <span>{isOpen ? "⌃" : "⌄"}</span>
+                  </div>
+                </button>
+                {isOpen ? <div className="accordion-panel inline-panel">{section.content}</div> : null}
+              </div>
+            );
+          })}
       </section>
     </main>
   );
