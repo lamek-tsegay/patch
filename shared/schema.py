@@ -97,3 +97,70 @@ def verify_against_file(finding: Finding, repo_root: str | os.PathLike) -> bool:
     except (FileNotFoundError, UnicodeDecodeError):
         return False
     return verify_against_source(finding, source_text)
+
+
+class FixStrategy(StrEnum):
+    # sql_injection
+    PARAMETERIZE_QUERY = "parameterize_query"
+    INPUT_ALLOWLIST = "input_allowlist"
+    ORM_MIGRATION = "orm_migration"
+    # xss_reflected
+    OUTPUT_ESCAPE = "output_escape"
+    CSP_HEADER = "csp_header"
+    INPUT_SANITIZE = "input_sanitize"
+    # command_injection
+    SUBPROCESS_ARRAY_ARGS = "subprocess_array_args"
+    SHELL_ESCAPE = "shell_escape"
+    COMMAND_WHITELIST = "command_whitelist"
+    # hardcoded_secret
+    ENV_VAR = "env_var"
+    SECRETS_MANAGER = "secrets_manager"
+    SCRUB_AND_ROTATE = "scrub_and_rotate"
+    # weak_crypto
+    UPGRADE_ALGORITHM = "upgrade_algorithm"
+    USE_KDF = "use_kdf"
+    # path_traversal
+    PATH_CANONICALIZE = "path_canonicalize"
+    PATH_ALLOWLIST = "path_allowlist"
+    # escape hatch — mirrors Category.OTHER
+    OTHER = "other"
+
+
+class BreakingChangeRisk(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class SearchReplacePatch(BaseModel):
+    file: str
+    search: str
+    replace: str
+
+    @field_validator("file")
+    @classmethod
+    def _no_leading_slash(cls, v: str) -> str:
+        if v.startswith("/"):
+            raise ValueError("file must be a repo-relative POSIX path, no leading slash")
+        return v
+
+    @model_validator(mode="after")
+    def _not_both_empty(self) -> "SearchReplacePatch":
+        # Empty search + non-empty replace is the create-file convention.
+        # Both empty is meaningless.
+        if self.search == "" and self.replace == "":
+            raise ValueError("search and replace cannot both be empty")
+        return self
+
+
+class FixProposal(BaseModel):
+    proposal_id: UUID
+    finding_id: UUID
+    strategy: FixStrategy
+    rank: int = Field(ge=1, le=3)
+    title: str
+    rationale: str
+    tradeoffs: str
+    breaking_change_risk: BreakingChangeRisk
+    patches: list[SearchReplacePatch] = Field(min_length=1)
+    created_at: datetime | None = None
