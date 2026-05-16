@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:
+    from strenum import StrEnum
 from pathlib import Path
 from uuid import UUID
 
