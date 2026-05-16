@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="comment">
+  <header>
+    <span class="author">{{ comment.author_name }}</span>
+    <time datetime="{{ comment.created_at }}">{{ comment.created_at }}</time>
+  </header>
+  <div class="comment-body">
+    {{ comment.body|safe }}
+  </div>
+</article>
+{% endblock %}
