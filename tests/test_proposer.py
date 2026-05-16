@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
 from proposer import propose_fixes
 from shared.db import init_db, list_proposals_for_finding
 from shared.nemotron_client import MockNemotronClient
-from shared.schema import Finding, FixStrategy
+from shared.schema import Category, Finding, FixStrategy, Severity
 
 FIXTURE = Path(__file__).parent / "fixtures" / "example_sql_injection_finding.json"
 
@@ -124,3 +125,85 @@ def test_propose_fixes_writes_to_db_when_conn_provided(monkeypatch):
         FixStrategy.PREPARED_STATEMENT,
     }
     assert all(p.finding_id == finding.finding_id for p in stored)
+
+
+_VULN_CRYPTO = "    hash = hashlib.md5(password.encode()).hexdigest()"
+
+
+def _weak_crypto_finding() -> Finding:
+    return Finding(
+        finding_id=uuid4(),
+        severity=Severity.HIGH,
+        category=Category.WEAK_CRYPTO,
+        file="demo-repo/auth/login.py",
+        line_start=53,
+        line_end=53,
+        vulnerable_code=_VULN_CRYPTO,
+        description="Password is hashed with MD5, which is cryptographically broken for password storage and trivially reversible via precomputed tables.",
+        exploit_path="An attacker who obtains the password store can recover plaintext passwords via rainbow tables or fast brute force on commodity GPUs.",
+        cwe="CWE-327",
+        confidence=0.92,
+    )
+
+
+def _mock_client_for_weak_crypto() -> MockNemotronClient:
+    # Keyed by the full "Strategy: <value>" prompt fragment so the OTHER
+    # slot's marker doesn't collide with stray "other" occurrences elsewhere.
+    return MockNemotronClient(
+        responses={
+            "Strategy: upgrade_algorithm": {
+                "title": "Replace MD5 with bcrypt for password hashing",
+                "rationale": "MD5 is cryptographically broken for password storage; bcrypt provides per-row salting and adaptive cost.",
+                "tradeoffs": "Introduces bcrypt as a new dependency. Existing MD5 hashes cannot be verified — needs a migration step.",
+                "breaking_change_risk": "medium",
+                "search_block": _VULN_CRYPTO,
+                "replace_block": (
+                    "    import bcrypt\n"
+                    "    hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt())"
+                ),
+            },
+            "Strategy: use_kdf": {
+                "title": "Switch to PBKDF2 with a per-record salt",
+                "rationale": "PBKDF2-HMAC-SHA256 with 600000 iterations is FIPS-approved and ships in the stdlib.",
+                "tradeoffs": "Stored value must now include the salt alongside the derived key — schema migration required.",
+                "breaking_change_risk": "high",
+                "search_block": _VULN_CRYPTO,
+                "replace_block": (
+                    "    salt = secrets.token_bytes(16)\n"
+                    "    hash = hashlib.pbkdf2_hmac(\"sha256\", password.encode(), salt, 600000)"
+                ),
+            },
+            "Strategy: other": {
+                "title": "Delegate password handling to passlib's CryptContext",
+                "rationale": "passlib selects the algorithm, formats the stored hash, and handles verification consistently.",
+                "tradeoffs": "Introduces passlib as a dependency. Most idiomatic option for production Flask apps.",
+                "breaking_change_risk": "medium",
+                "search_block": _VULN_CRYPTO,
+                "replace_block": (
+                    "    from passlib.context import CryptContext\n"
+                    "    pwd_ctx = CryptContext(schemes=[\"bcrypt\"])\n"
+                    "    hash = pwd_ctx.hash(password)"
+                ),
+            },
+        }
+    )
+
+
+def test_propose_fixes_weak_crypto(monkeypatch):
+    monkeypatch.setenv("NIM_MODEL_SUPER", "mock-nemotron-super")
+    finding = _weak_crypto_finding()
+
+    proposals = propose_fixes(finding, _mock_client_for_weak_crypto())
+
+    assert len(proposals) == 3
+    assert [p.rank for p in proposals] == [1, 2, 3]
+
+    strategies = {p.strategy for p in proposals}
+    assert len(strategies) == 3
+    assert strategies == {
+        FixStrategy.UPGRADE_ALGORITHM,
+        FixStrategy.USE_KDF,
+        FixStrategy.OTHER,
+    }
+
+    assert all(p.finding_id == finding.finding_id for p in proposals)

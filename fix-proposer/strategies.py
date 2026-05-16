@@ -67,8 +67,53 @@ _SQL_INJECTION_SLOTS: tuple[StrategySlot, StrategySlot, StrategySlot] = (
 )
 
 
+_WEAK_CRYPTO_SLOTS: tuple[StrategySlot, StrategySlot, StrategySlot] = (
+    StrategySlot(
+        strategy=FixStrategy.UPGRADE_ALGORITHM,
+        description="Replace the weak hashing algorithm with a modern password-hashing function (bcrypt for passwords, sha256/blake2b for integrity).",
+        prompt_hint=(
+            "Replace the weak hashing algorithm with a modern password-hashing "
+            "function. For password storage, use bcrypt via the `bcrypt` library "
+            "(already in many Python projects) — generate a salt and use "
+            "bcrypt.hashpw. For non-password integrity hashing, use hashlib.sha256 "
+            "or hashlib.blake2b. Do not preserve the weak algorithm anywhere in "
+            "the replace_block. If bcrypt or argon2 isn't already imported, "
+            "include the import in replace_block and call out the new dependency "
+            "in tradeoffs."
+        ),
+    ),
+    StrategySlot(
+        strategy=FixStrategy.USE_KDF,
+        description="Replace direct hashing with a proper key derivation function (PBKDF2 with high iteration count and per-record salt).",
+        prompt_hint=(
+            "Replace direct hashing with a proper key derivation function. Use "
+            "hashlib.pbkdf2_hmac with sha256, a per-record salt of 16+ bytes, "
+            "and at least 600000 iterations (OWASP 2024 recommendation). The "
+            "replace_block must produce a stored value that includes the salt "
+            "alongside the derived key so verification is possible. If the "
+            "original code stored only the hash, this is a schema-level change "
+            "— flag it in tradeoffs."
+        ),
+    ),
+    StrategySlot(
+        strategy=FixStrategy.OTHER,
+        description="Delegate password handling to a vetted library (passlib's CryptContext with bcrypt scheme).",
+        prompt_hint=(
+            "Delegate password handling entirely to a vetted library: replace "
+            "the custom hashing with passlib's CryptContext using 'bcrypt' as "
+            "the scheme. The replace_block should construct a CryptContext at "
+            "module scope and use ctx.hash() / ctx.verify() in place of the "
+            "original calls. Note in tradeoffs that this introduces passlib as "
+            "a dependency and is the most idiomatic option for production Flask "
+            "apps."
+        ),
+    ),
+)
+
+
 STRATEGY_SLOTS: dict[Category, tuple[StrategySlot, ...]] = {
     Category.SQL_INJECTION: _SQL_INJECTION_SLOTS,
+    Category.WEAK_CRYPTO: _WEAK_CRYPTO_SLOTS,
 }
 
 
