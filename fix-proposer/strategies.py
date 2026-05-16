@@ -111,9 +111,56 @@ _WEAK_CRYPTO_SLOTS: tuple[StrategySlot, StrategySlot, StrategySlot] = (
 )
 
 
+_COMMAND_INJECTION_SLOTS: tuple[StrategySlot, StrategySlot, StrategySlot] = (
+    StrategySlot(
+        strategy=FixStrategy.SUBPROCESS_ARRAY_ARGS,
+        description="Pass the command as a list of args with shell=False so no shell ever interprets metacharacters.",
+        prompt_hint=(
+            "Replace the single-string shell command with subprocess.run's "
+            "array-of-args form and set shell=False explicitly. The replace_block "
+            "must pass the command as a list (e.g., ['ping', '-c', '2', hostname]) "
+            "so the shell never interprets metacharacters. Preserve all other "
+            "kwargs (capture_output, text, timeout) exactly. If the original "
+            "uses shell=True, remove it; if shell isn't passed, do not add it "
+            "(False is the default). This is the recommended fix for command "
+            "injection in Python."
+        ),
+    ),
+    StrategySlot(
+        strategy=FixStrategy.SHELL_ESCAPE,
+        description="Keep shell=True but escape the untrusted argument via shlex.quote before interpolation.",
+        prompt_hint=(
+            "Keep shell=True for compatibility but escape the user-supplied "
+            "argument using shlex.quote before interpolation. The replace_block "
+            "must call shlex.quote on the untrusted variable and inject the "
+            "quoted result into the command string. Include 'import shlex' in "
+            "the replace_block if not already imported, and call out the import "
+            "addition in tradeoffs. This is structurally close to the original "
+            "but trades correctness on weird inputs for backwards compatibility."
+        ),
+    ),
+    StrategySlot(
+        strategy=FixStrategy.COMMAND_WHITELIST,
+        description="Validate the untrusted input against a closed allowlist before invoking subprocess.",
+        prompt_hint=(
+            "Validate the user-supplied argument against an allowlist of "
+            "permitted values before passing it to subprocess. The replace_block "
+            "must define an explicit set or tuple of allowed values (e.g., a "
+            "pre-vetted list of hostnames or a regex pattern matching only "
+            "strict-format identifiers), check the input against it, and raise "
+            "ValueError with a clear message on mismatch. This is the strictest "
+            "option and is appropriate when the legitimate input space is "
+            "small and known. Call out in tradeoffs that this restricts "
+            "functionality to the allowlisted values."
+        ),
+    ),
+)
+
+
 STRATEGY_SLOTS: dict[Category, tuple[StrategySlot, ...]] = {
     Category.SQL_INJECTION: _SQL_INJECTION_SLOTS,
     Category.WEAK_CRYPTO: _WEAK_CRYPTO_SLOTS,
+    Category.COMMAND_INJECTION: _COMMAND_INJECTION_SLOTS,
 }
 
 
