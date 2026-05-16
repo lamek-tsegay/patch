@@ -55,6 +55,11 @@ function patchApiPlugin() {
             return;
           }
 
+          if (req.url === "/api/run-scan" && req.method === "POST") {
+            sendJson(res, 200, runBridge("scan"));
+            return;
+          }
+
           if (req.url === "/api/commit-fix" && req.method === "POST") {
             const payload = await readJsonBody(req);
             sendJson(res, 200, runBridge("commit-fix", payload));
