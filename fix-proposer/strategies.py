@@ -24,28 +24,42 @@ _SQL_INJECTION_SLOTS: tuple[StrategySlot, StrategySlot, StrategySlot] = (
         strategy=FixStrategy.PARAMETERIZE_QUERY,
         description="Replace string interpolation with a parameterized query so the driver handles escaping.",
         prompt_hint=(
-            "Rewrite the vulnerable SQL call to use a parameterized query. "
-            "The replace_block must use placeholders (e.g. '?' or ':name') "
-            "and pass user input as a separate argument tuple or dict. Do not "
-            "concatenate or f-string user input into the SQL text."
+            "Convert the f-string SQL into a parameterized query using the "
+            "DB-API '?' placeholder style. The replace_block must call "
+            "db.execute(query, (email,)) with the query as a constant string "
+            "containing a '?' placeholder where {email} was. Preserve the "
+            ".fetchone() result bound to row and the following if not row: "
+            "branch exactly. Do not introduce new imports — the existing db "
+            "object already supports parameter binding."
         ),
     ),
     StrategySlot(
         strategy=FixStrategy.INPUT_ALLOWLIST,
         description="Reject the request before the SQL call unless input matches an allowlist.",
         prompt_hint=(
-            "Insert an explicit allowlist check (regex or set membership) on "
-            "the user-supplied value immediately before the SQL call. On "
-            "mismatch, return an error response. Leave the original SQL alone."
+            "Insert an email-format validation step immediately before the SQL "
+            "call. Use re.fullmatch() against a strict pattern (letters, "
+            "digits, dots, hyphens, plus, underscore in the local part; "
+            "dotted domain, 2+ char TLD). On mismatch, raise "
+            "ValueError('invalid email') so the caller's existing error path "
+            "handles it. Leave the original f-string SQL line and .fetchone() "
+            "call unchanged after the check. If re is not visible in the file "
+            "context shown, include import re at the top of the replace_block "
+            "and call out the import addition in tradeoffs."
         ),
     ),
     StrategySlot(
-        strategy=FixStrategy.ORM_MIGRATION,
-        description="Replace the raw SQL with an ORM call that emits parameterized SQL.",
+        strategy=FixStrategy.PREPARED_STATEMENT,
+        description="Use the DB driver's prepared-statement API to pre-compile the query and bind parameters at execute time.",
         prompt_hint=(
-            "Replace the raw SQL with an equivalent ORM call (e.g. SQLAlchemy "
-            "session.query / select with bound params). Preserve return "
-            "semantics so callers do not need to change."
+            "Use the DB driver's prepared-statement API: call db.prepare("
+            "query) with the parameterized SQL string, then execute the "
+            "prepared statement with (email,) as the parameter tuple. Bind "
+            "the result to row and preserve the if not row: branch exactly. "
+            "If the existing db object does not expose .prepare(), call this "
+            "limitation out in tradeoffs and fall back to the "
+            "parameterize_query pattern's db.execute(query, (email,)) form — "
+            "pick whichever maps cleanly to the visible db object."
         ),
     ),
 )

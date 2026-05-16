@@ -104,6 +104,7 @@ class FixStrategy(StrEnum):
     PARAMETERIZE_QUERY = "parameterize_query"
     INPUT_ALLOWLIST = "input_allowlist"
     ORM_MIGRATION = "orm_migration"
+    PREPARED_STATEMENT = "prepared_statement"
     # xss_reflected
     OUTPUT_ESCAPE = "output_escape"
     CSP_HEADER = "csp_header"

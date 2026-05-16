@@ -19,3 +19,6 @@ venv/
 # Logs and Brev workspace state
 /logs/
 /.brev/
+
+# Local QA artifacts from integration test runs
+tests/outputs/
