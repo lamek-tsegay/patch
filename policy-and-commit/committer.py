@@ -2,12 +2,12 @@ import os
 from dotenv import load_dotenv
 from github import Github, Auth
 from shared.schema import Finding
-from policy_and_commit.engine import PolicyEngine
+from engine import PolicyEngine
 
 load_dotenv()
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_REPO = os.getenv("GITHUB_REPO", "patch-agent/demo-vulnerable-app")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "lamek-tsegay/patch")
 
 
 def verify_against_file(finding: Finding, file_content: str) -> bool:
