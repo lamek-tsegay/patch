@@ -124,7 +124,7 @@ The fix proposer emits exactly **three** `FixProposal` objects per `Finding`. Ea
 
 | Category | Slot 1 | Slot 2 | Slot 3 |
 |---|---|---|---|
-| `sql_injection` | `parameterize_query` | `input_allowlist` | `orm_migration` |
+| `sql_injection` | `parameterize_query` | `input_allowlist` | `prepared_statement` |
 | `xss_reflected` | `output_escape` | `csp_header` | `input_sanitize` |
 | `command_injection` | `subprocess_array_args` | `shell_escape` | `command_whitelist` |
 | `hardcoded_secret` | `env_var` | `secrets_manager` | `scrub_and_rotate` |

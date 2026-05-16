@@ -55,15 +55,16 @@ def _mock_client_for_sqli() -> MockNemotronClient:
                     "    if not row:"
                 ),
             },
-            "orm_migration": {
-                "title": "Replace raw SQL with a SQLAlchemy User lookup",
-                "rationale": "Use the User model so the driver emits parameterized SQL automatically.",
-                "tradeoffs": "Requires a User model and an active session; larger blast radius than a one-line fix.",
-                "breaking_change_risk": "medium",
+            "prepared_statement": {
+                "title": "Use the DB driver's prepared-statement API",
+                "rationale": "Pre-compile the SQL once with db.prepare() and bind the email value at execute time.",
+                "tradeoffs": "Requires that the db object exposes .prepare(); the slot falls back to parameterize_query semantics if not.",
+                "breaking_change_risk": "low",
                 "search_block": _VULN,
                 "replace_block": (
-                    "    user = session.query(User).filter(User.email == email).one_or_none()\n"
-                    "    if not user:"
+                    "    stmt = db.prepare(\"SELECT id, password_hash FROM users WHERE email = ?\")\n"
+                    "    row = stmt.execute((email,)).fetchone()\n"
+                    "    if not row:"
                 ),
             },
         }
@@ -84,7 +85,7 @@ def test_propose_fixes_sql_injection_produces_three_ranked_proposals(monkeypatch
     assert strategies == {
         FixStrategy.PARAMETERIZE_QUERY,
         FixStrategy.INPUT_ALLOWLIST,
-        FixStrategy.ORM_MIGRATION,
+        FixStrategy.PREPARED_STATEMENT,
     }
 
     assert all(p.finding_id == finding.finding_id for p in proposals)
