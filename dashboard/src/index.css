@@ -357,6 +357,15 @@ code {
   height: auto;
 }
 
+.robot-image {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 .accordion-stack {
   display: grid;
   gap: 14px;
