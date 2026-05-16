@@ -58,13 +58,42 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=os.environ.get("NIM_MODEL_SUPER", "nvidia/nemotron-3-super-120b-a12b"),
         help="NIM model ID",
     )
-    p.add_argument(
+    group = p.add_mutually_exclusive_group()
+    group.add_argument(
         "--limit",
         type=int,
         default=None,
         help="stop after N scanned files (default: no limit)",
     )
+    group.add_argument(
+        "--files",
+        default=None,
+        help=(
+            "comma-separated relative paths to scan instead of walking the "
+            "repo. Paths can be display-style (e.g. demo-repo/auth/login.py) "
+            "or repo-relative (auth/login.py). Skips the walker entirely; "
+            "mutually exclusive with --limit."
+        ),
+    )
     return p.parse_args(argv)
+
+
+def _resolve_target_files(repo_root: Path, files_arg: str) -> list[Path]:
+    """Map user-supplied paths to filesystem paths under repo_root."""
+    resolved: list[Path] = []
+    prefix = repo_root.name + "/"
+    for raw in files_arg.split(","):
+        rel = raw.strip()
+        if not rel:
+            continue
+        # Accept both "demo-repo/auth/login.py" and "auth/login.py"
+        if rel.startswith(prefix):
+            rel = rel[len(prefix):]
+        candidate = (repo_root / rel).resolve()
+        if not candidate.exists():
+            raise SystemExit(f"--files: not found under {repo_root}: {raw}")
+        resolved.append(candidate)
+    return resolved
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -85,6 +114,8 @@ def main(argv: list[str] | None = None) -> int:
     console.print(f"model = {args.model}")
     if args.limit is not None:
         console.print(f"limit = {args.limit}")
+    if args.files is not None:
+        console.print(f"files = {args.files}")
 
     client = make_client()
     conn = init_db(args.db)
@@ -98,7 +129,12 @@ def main(argv: list[str] | None = None) -> int:
         "persisted": 0,
     }
 
-    for path in walk_first_party(repo_root):
+    if args.files is not None:
+        targets = iter(_resolve_target_files(repo_root, args.files))
+    else:
+        targets = walk_first_party(repo_root)
+
+    for path in targets:
         if args.limit is not None and totals["files_scanned"] >= args.limit:
             console.print(f"[yellow]limit reached ({args.limit}); stopping[/yellow]")
             break

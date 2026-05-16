@@ -24,17 +24,6 @@ def ping():
     hostname = (payload.get("hostname") or "").strip()
     if not hostname:
         return jsonify({"error": "hostname required"}), 400
-
-    result = subprocess.run(
-        f"ping -c 2 {hostname}",
-        shell=True,
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-
-    return jsonify({
-        "stdout": result.stdout,
-        "stderr": result.stderr,
-        "returncode": result.returncode,
-    }), 200
+    cmd = "ping -c 2 " + hostname
+    output = subprocess.check_output(cmd, shell=True, text=True, timeout=10)
+    return jsonify({"output": output}), 200
