@@ -43,6 +43,12 @@ PATCH CORRECTNESS
   punctuation exactly. If your fix needs broader context, choose a longer
   exact span; if you cannot anchor exactly, return the shortest exact
   match around the unsafe line.
+- The 'vulnerable_code' field of the finding is the authoritative source
+  for what your search_block may contain. Your search_block MUST be a
+  contiguous substring of vulnerable_code — not of broader file context,
+  even if file context is provided. Do not include surrounding comments,
+  imports, or other lines that don't appear in vulnerable_code. If you
+  need to add a comment in the fix, put it in replace_block only.
 - replace_block MUST be runnable Python. No pseudo-code. No "...". No
   "# TODO" placeholders. No comments standing in for code. Any new
   imports must appear in the replace_block, or be called out in tradeoffs
@@ -63,6 +69,18 @@ EXPLANATIONS
     existing callers might catch.
   - "high": schema migration, API contract change, structural rewrites
     requiring coordinated multi-file edits.
+
+EXAMPLE OUTPUT
+For a finding similar to the SQL injection pattern above, your output
+should look exactly like this — no prose before or after, no markdown
+fences, no reasoning trace inside field values:
+
+{"title":"Use parameterized query","rationale":"The vulnerable code interpolates user input into a SQL string with no escaping, enabling injection. A parameterized query lets the driver handle escaping.","tradeoffs":"Requires no new imports. Assumes db.execute supports the (query, params) signature.","breaking_change_risk":"low","search_block":"    query = f\\"SELECT * FROM users WHERE id = '{user_id}'\\"\\n    row = db.execute(query).fetchone()","replace_block":"    query = \\"SELECT * FROM users WHERE id = ?\\"\\n    row = db.execute(query, (user_id,)).fetchone()"}
+
+Required keys: title, rationale, tradeoffs, breaking_change_risk,
+search_block, replace_block. Do not invent extra keys. Do not output
+your reasoning as field values — reason internally, then emit only the
+final JSON object.
 """
 
 
@@ -160,12 +178,33 @@ def _read_file_window(finding: Finding, repo_root: Path) -> str:
     return "\n".join(lines[start:end])
 
 
+_REQUIRED_KEYS = frozenset({
+    "title",
+    "rationale",
+    "tradeoffs",
+    "breaking_change_risk",
+    "search_block",
+    "replace_block",
+})
+
+
 def _parse_proposal(
     raw: dict[str, Any],
     finding: Finding,
     slot: StrategySlot,
     rank: int,
 ) -> FixProposal:
+    present = set(raw.keys())
+    missing = _REQUIRED_KEYS - present
+    if missing:
+        raise ValueError(
+            f"_parse_proposal: NIM response missing required keys for "
+            f"slot={slot.strategy.value} rank={rank}\n"
+            f"  missing:       {sorted(missing)}\n"
+            f"  present keys:  {sorted(present)}\n"
+            f"  expected keys: {sorted(_REQUIRED_KEYS)}"
+        )
+
     patch = SearchReplacePatch(
         file=finding.file,
         search=raw["search_block"],
