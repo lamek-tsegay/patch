@@ -1,7 +1,16 @@
-# dashboard
+# Dashboard
 
-Owner: **BK**
+PATCH dashboard frontend for the live demo UI.
 
-UI for Patch — shows the agent's live reasoning trace, NemoClaw policy events (including blocked actions), the queue of findings with their three ranked fix options, and the full audit trail.
+## Run
 
-See [/shared/schema.md](../shared/schema.md) for the Finding contract. Import the model from `shared.schema`, do not redefine it.
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
