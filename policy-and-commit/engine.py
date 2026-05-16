@@ -1,18 +1,10 @@
 import yaml
 import os
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Literal
-from shared.schema import Finding
+from datetime import datetime, timezone
+from shared.schema import Finding, PolicyEvent
 
 
-@dataclass
-class PolicyEvent:
-    timestamp: str
-    action: str
-    allowed: bool
-    reason: str
-    finding_id: str = None
+
 
 
 class PolicyEngine:
@@ -25,10 +17,10 @@ class PolicyEngine:
             self.policy = yaml.safe_load(f)
         self.events = []
 
-    def _emit_event(self, action: str, allowed: bool, 
-                    reason: str, finding_id: str = None):
+    def _emit_event(self, action: str, allowed: bool,
+                reason: str, finding_id=None):
         event = PolicyEvent(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc),
             action=action,
             allowed=allowed,
             reason=reason,
@@ -114,13 +106,4 @@ class PolicyEngine:
         )
 
     def get_events(self) -> list:
-        return [
-            {
-                "timestamp": e.timestamp,
-                "action": e.action,
-                "allowed": e.allowed,
-                "reason": e.reason,
-                "finding_id": e.finding_id
-            }
-            for e in self.events
-        ]
+        return [e.model_dump(mode="json") for e in self.events]
