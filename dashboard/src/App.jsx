@@ -12,134 +12,289 @@ const COVER_ALERTS = [
 function BrandIcon() {
   return (
     <svg className="brand-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="30" height="30" rx="6" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/>
-      <polygon points="16,4 28,10 28,22 16,28 4,22 4,10" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" fill="none"/>
-      <polygon points="16,4 28,10 16,16" fill="rgba(255,255,255,0.08)"/>
-      <polygon points="16,4 4,10 16,16" fill="rgba(255,255,255,0.04)"/>
-      <polygon points="16,16 28,10 28,22" fill="rgba(255,255,255,0.06)"/>
-      <polygon points="16,16 4,10 4,22" fill="rgba(255,255,255,0.03)"/>
-      <polygon points="16,16 28,22 16,28" fill="rgba(255,255,255,0.05)"/>
-      <polygon points="16,16 4,22 16,28" fill="rgba(255,255,255,0.07)"/>
-      <circle cx="16" cy="16" r="2" fill="rgba(255,255,255,0.5)"/>
+      <polygon points="16,2 30,9 30,23 16,30 2,23 2,9" fill="rgba(8,12,35,0.95)" stroke="rgba(0,150,255,0.7)" strokeWidth="1.5"/>
+      <polygon points="16,7 25,11.5 25,20.5 16,25 7,20.5 7,11.5" fill="rgba(0,30,100,0.5)" stroke="rgba(0,180,255,0.5)" strokeWidth="1"/>
+      <polygon points="16,11 21,13.5 21,18.5 16,21 11,18.5 11,13.5" fill="rgba(0,80,200,0.4)" stroke="rgba(0,200,255,0.9)" strokeWidth="1.2"/>
+      <circle cx="16" cy="16" r="2.5" fill="rgba(0,200,255,0.95)"/>
+      <circle cx="16" cy="16" r="4" fill="none" stroke="rgba(0,180,255,0.4)" strokeWidth="0.5"/>
     </svg>
   );
 }
 
 function CoverPage({ onEnter }) {
   const canvasRef = useRef(null);
-  const rafRef = useRef(null);
+  const bgRafRef = useRef(null);
+  const logoCanvasRef = useRef(null);
+  const logoRafRef = useRef(null);
   const [ready, setReady] = useState(false);
-  const [leaving, setLeaving] = useState(false);
+  const [phase, setPhase] = useState("idle");
+  const mouseRef = useRef({ x: 0, y: 0 });
+  const rotRef = useRef({ x: 0, y: 0, vx: 0, vy: 0 });
+  const zoomRef = useRef({ scale: 1, opacity: 1, zooming: false });
 
   useEffect(() => { const t = setTimeout(() => setReady(true), 600); return () => clearTimeout(t); }, []);
-  function handleEnter() { setLeaving(true); setTimeout(onEnter, 600); }
+
+  function handleClick() {
+    if (phase !== "idle") return;
+    setPhase("shutting");
+    setTimeout(onEnter, 900);
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     const DPR = window.devicePixelRatio || 1;
     let tick = 0;
     const particles = [];
-
     function resize() {
       canvas.width = canvas.offsetWidth * DPR;
       canvas.height = canvas.offsetHeight * DPR;
       ctx.scale(DPR, DPR);
       particles.length = 0;
-      const n = Math.floor(canvas.offsetWidth * canvas.offsetHeight / 8000);
-      for (let i = 0; i < n; i++) particles.push({ x: Math.random()*canvas.offsetWidth, y: Math.random()*canvas.offsetHeight, r: Math.random()*1.2+0.3, s: Math.random()*0.25+0.04, o: Math.random()*0.25+0.05, d: (Math.random()-0.5)*0.15 });
-    }
-
-    const CODE = [
-      "def authenticate(email, password):",
-      "  conn = db.connect(DATABASE_URL)",
-      '  query = f"SELECT * FROM users',
-      "    WHERE email = '{email}'\"",
-      "  result = conn.execute(query)",
-      "  if result.fetchone(): return True",
-    ];
-    const IS_VULN = [false, false, true, true, true, false];
-
-    function frame() {
-      const W = canvas.offsetWidth, H = canvas.offsetHeight;
-      ctx.clearRect(0, 0, W, H);
-      tick++;
-      for (const p of particles) {
-        p.y -= p.s; p.x += p.d;
-        if (p.y < -2) { p.y = H+2; p.x = Math.random()*W; }
-        if (p.x < 0 || p.x > W) p.x = Math.random()*W;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-        ctx.fillStyle = `rgba(255,255,255,${p.o})`; ctx.fill();
-      }
-      const lh = 26, sx = W*0.07, sy = H*0.22;
-      ctx.font = '12px "SF Mono",ui-monospace,monospace';
-      CODE.forEach((line, i) => {
-        const y = sy + i*lh, phase = (tick - i*20)/80;
-        if (phase < 0) return;
-        const alpha = Math.min(1, phase*2) * 0.65;
-        if (IS_VULN[i] && phase > 0.3) {
-          const g = 0.4 + Math.sin(tick*0.07+i)*0.4;
-          ctx.fillStyle = `rgba(255,60,60,${0.05*g})`;
-          ctx.fillRect(sx-6, y-3, W*0.86, lh);
-        }
-        ctx.fillStyle = IS_VULN[i] ? `rgba(255,100,100,${alpha})` : `rgba(200,210,230,${alpha*0.55})`;
-        ctx.fillText(line, sx, y+14);
-        if (IS_VULN[i] && phase > 0.4) {
-          ctx.font = '9px Inter,sans-serif';
-          ctx.fillStyle = `rgba(255,60,60,${alpha*0.7})`;
-          ctx.fillText('vulnerable', W*0.82, y+13);
-          ctx.font = '12px "SF Mono",ui-monospace,monospace';
-        }
+      const n = Math.floor(canvas.offsetWidth * canvas.offsetHeight / 7000);
+      for (let i = 0; i < n; i++) particles.push({
+        x: Math.random()*canvas.offsetWidth, y: Math.random()*canvas.offsetHeight,
+        r: Math.random()*1.2+0.2, s: Math.random()*0.15+0.02,
+        o: Math.random()*0.35+0.05, d: (Math.random()-0.5)*0.08
       });
-      const scanY = H*0.18 + ((tick%280)/280)*(H*0.68);
-      const g = ctx.createLinearGradient(0,scanY-20,0,scanY+20);
-      g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(0.5,'rgba(255,255,255,0.035)'); g.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=g; ctx.fillRect(0,scanY-20,W,40);
-      rafRef.current = requestAnimationFrame(frame);
+    }
+    function frame() {
+      const W=canvas.offsetWidth, H=canvas.offsetHeight;
+      ctx.clearRect(0,0,W,H); tick++;
+      for (const p of particles) {
+        p.y-=p.s; p.x+=p.d;
+        if(p.y<-2){p.y=H+2;p.x=Math.random()*W;}
+        if(p.x<0||p.x>W)p.x=Math.random()*W;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(100,160,255,${p.o})`; ctx.fill();
+      }
+      bgRafRef.current=requestAnimationFrame(frame);
+    }
+    resize(); new ResizeObserver(resize).observe(canvas); frame();
+    return()=>cancelAnimationFrame(bgRafRef.current);
+  },[]);
+
+  useEffect(() => {
+    const canvas = logoCanvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const DPR = window.devicePixelRatio || 1;
+    const SIZE = 500;
+    canvas.width = SIZE*DPR; canvas.height = SIZE*DPR;
+    ctx.scale(DPR, DPR);
+    const cx=SIZE/2, cy=SIZE/2;
+
+    function onMouseMove(e) {
+      const rect=canvas.getBoundingClientRect();
+      mouseRef.current={ x:(e.clientX-rect.left-SIZE/2)/(SIZE/2), y:(e.clientY-rect.top-SIZE/2)/(SIZE/2) };
+    }
+    canvas.addEventListener("mousemove", onMouseMove);
+
+    function proj(x,y,z,rx,ry) {
+      const cosRx=Math.cos(rx),sinRx=Math.sin(rx);
+      const cosRy=Math.cos(ry),sinRy=Math.sin(ry);
+      const y1=y*cosRx-z*sinRx,z1=y*sinRx+z*cosRx;
+      const x2=x*cosRy+z1*sinRy,z2=-x*sinRy+z1*cosRy;
+      const fov=420,sc=fov/(fov+z2);
+      return [cx+x2*sc, cy+y1*sc, sc, z2];
     }
 
-    resize(); new ResizeObserver(resize).observe(canvas); frame();
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+    function hexRing(R,D,rx,ry) {
+      return [0,60,120,180,240,300].map(a=>{
+        const r=a*Math.PI/180;
+        return proj(R*Math.cos(r),D,R*Math.sin(r),rx,ry);
+      });
+    }
+
+    function drawHexFace(pts, fill, stroke, lw=2) {
+      ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
+      for(let i=1;i<6;i++) ctx.lineTo(pts[i][0],pts[i][1]);
+      ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();}
+      if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();}
+    }
+
+    let tick=0;
+    function frame() {
+      const z=zoomRef.current, rot=rotRef.current, m=mouseRef.current;
+      rot.vx+=(m.y*0.6-rot.x)*0.06; rot.vy+=(m.x*0.6-rot.y)*0.06;
+      rot.vx*=0.88; rot.vy*=0.88;
+      rot.x+=rot.vx; rot.y+=rot.vy;
+      if(z.zooming){z.scale=Math.min(z.scale*1.08,40);z.opacity=Math.max(0,1-(z.scale-1)/8);}
+
+      ctx.clearRect(0,0,SIZE,SIZE);
+      ctx.save();
+      ctx.translate(cx,cy); ctx.scale(z.scale,z.scale); ctx.translate(-cx,-cy);
+      ctx.globalAlpha=z.opacity;
+
+      const autoY=tick*0.002;
+      const rx=rot.x*0.8 - 0.52, ry=rot.y*0.8+autoY;
+
+      // Ground glow
+      const groundY = cy+80;
+      const gg=ctx.createRadialGradient(cx,groundY,0,cx,groundY,160);
+      gg.addColorStop(0,"rgba(0,100,255,0.25)"); gg.addColorStop(1,"rgba(0,100,255,0)");
+      ctx.fillStyle=gg; ctx.beginPath(); ctx.ellipse(cx,groundY,160,30,0,0,Math.PI*2); ctx.fill();
+
+      // Orbital rings on ground
+      [160,130,105].forEach((r,i)=>{
+        ctx.strokeStyle=`rgba(30,100,255,${0.15-i*0.03})`; ctx.lineWidth=1;
+        ctx.setLineDash([3,6]);
+        ctx.beginPath(); ctx.ellipse(cx,groundY,r,r*0.18,0,0,Math.PI*2); ctx.stroke();
+        ctx.setLineDash([]);
+      });
+
+      // Orbiting dots
+      [0,1,2].forEach(i=>{
+        const a=tick*0.02+i*2.1;
+        const orR=145-i*18;
+        const dx=cx+orR*Math.cos(a), dy=groundY+orR*0.18*Math.sin(a);
+        ctx.beginPath(); ctx.arc(dx,dy,2,0,Math.PI*2);
+        ctx.fillStyle=`rgba(80,180,255,${0.6+Math.sin(a)*0.3})`; ctx.fill();
+      });
+
+      // Outer hex (large, dark with glow edge)
+      const R1=115, D1=18;
+      const top1=hexRing(R1,-D1,rx,ry), bot1=hexRing(R1,D1,rx,ry);
+
+      // Side faces outer
+      for(let i=0;i<6;i++){
+        const j=(i+1)%6;
+        const avgSc=(bot1[i][2]+bot1[j][2]+top1[i][2]+top1[j][2])/4;
+        const l=0.1+avgSc*0.25;
+        ctx.beginPath();
+        ctx.moveTo(bot1[i][0],bot1[i][1]); ctx.lineTo(bot1[j][0],bot1[j][1]);
+        ctx.lineTo(top1[j][0],top1[j][1]); ctx.lineTo(top1[i][0],top1[i][1]);
+        ctx.closePath();
+        ctx.fillStyle=`rgba(8,12,30,${0.92})`; ctx.fill();
+        ctx.strokeStyle=`rgba(20,80,200,${0.3+l*0.3})`; ctx.lineWidth=1; ctx.stroke();
+      }
+      drawHexFace(bot1,"rgba(5,8,20,0.95)","rgba(20,80,200,0.3)",1);
+      drawHexFace(top1,"rgba(10,15,35,0.9)","rgba(40,120,255,0.5)",1.5);
+
+      // Blue glow rim on top face
+      ctx.shadowColor="rgba(0,120,255,0.8)"; ctx.shadowBlur=12;
+      drawHexFace(top1,null,"rgba(0,150,255,0.9)",2);
+      ctx.shadowBlur=0;
+
+      // Inner hex (medium)
+      const R2=72, D2=22;
+      const top2=hexRing(R2,-D2,rx,ry), bot2=hexRing(R2,D2,rx,ry);
+      for(let i=0;i<6;i++){
+        const j=(i+1)%6;
+        ctx.beginPath();
+        ctx.moveTo(bot2[i][0],bot2[i][1]); ctx.lineTo(bot2[j][0],bot2[j][1]);
+        ctx.lineTo(top2[j][0],top2[j][1]); ctx.lineTo(top2[i][0],top2[i][1]);
+        ctx.closePath();
+        ctx.fillStyle="rgba(5,10,40,0.95)"; ctx.fill();
+        ctx.strokeStyle="rgba(0,100,255,0.4)"; ctx.lineWidth=1; ctx.stroke();
+      }
+      drawHexFace(bot2,"rgba(3,6,18,0.95)","rgba(0,100,255,0.3)",1);
+
+      // Inner top with blue glow
+      ctx.shadowColor="rgba(0,150,255,1)"; ctx.shadowBlur=20;
+      drawHexFace(top2,"rgba(0,30,100,0.6)","rgba(0,180,255,1)",2);
+      ctx.shadowBlur=0;
+
+      // Innermost hex glow fill
+      const R3=38, D3=24;
+      const top3=hexRing(R3,-D3,rx,ry);
+      const innerGrd=ctx.createRadialGradient(
+        top3.reduce((s,p)=>s+p[0],0)/6, top3.reduce((s,p)=>s+p[1],0)/6, 0,
+        top3.reduce((s,p)=>s+p[0],0)/6, top3.reduce((s,p)=>s+p[1],0)/6, 50
+      );
+      innerGrd.addColorStop(0,"rgba(0,180,255,0.9)"); innerGrd.addColorStop(1,"rgba(0,80,200,0)");
+      ctx.shadowColor="rgba(0,200,255,0.8)"; ctx.shadowBlur=15;
+      drawHexFace(top3,innerGrd,"rgba(0,200,255,0.8)",1.5);
+      ctx.shadowBlur=0;
+
+      // P letter mark in center
+      const fcx=top2.reduce((s,p)=>s+p[0],0)/6;
+      const fcy=top2.reduce((s,p)=>s+p[1],0)/6;
+      ctx.save();
+      ctx.translate(fcx,fcy);
+      ctx.font="bold 28px Inter,sans-serif";
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.shadowColor="rgba(0,200,255,1)"; ctx.shadowBlur=10;
+      ctx.fillStyle="rgba(150,220,255,0.95)";
+      ctx.fillText("⬡", 0, 0);
+      ctx.shadowBlur=0;
+      ctx.restore();
+
+      ctx.restore();
+      tick++;
+      logoRafRef.current=requestAnimationFrame(frame);
+    }
+
+    frame();
+    return()=>{cancelAnimationFrame(logoRafRef.current);canvas.removeEventListener("mousemove",onMouseMove);};
+  },[]);
 
   return (
-    <div onClick={handleEnter} style={{ position:'fixed',inset:0,zIndex:100,cursor:'pointer',background:'#08090c',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',transition:'opacity 0.6s ease',opacity:leaving?0:1 }}>
-      <canvas ref={canvasRef} style={{ position:'absolute',inset:0,width:'100%',height:'100%' }} />
+    <div style={{position:"fixed",inset:0,zIndex:100,background:"#06080f",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+      <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+
       <style>{`
         @keyframes slideIn{0%{opacity:0;transform:translateX(20px)}20%{opacity:1;transform:translateX(0)}100%{opacity:1}}
         @keyframes dot{0%,100%{opacity:1}50%{opacity:0.15}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes orbitPulse{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:0.7;transform:scale(1.02)}}
+        @keyframes scanBlink{0%,100%{opacity:1}50%{opacity:0.5}}
+        @keyframes shutterTop{0%{transform:translateY(-100%)}100%{transform:translateY(0)}}
+        @keyframes shutterBot{0%{transform:translateY(100%)}100%{transform:translateY(0)}}
+        @keyframes shutterOpen{0%{transform:translateY(0)}100%{transform:translateY(-100%)}}
+        @keyframes shutterOpenBot{0%{transform:translateY(0)}100%{transform:translateY(100%)}}
       `}</style>
-      <div style={{ position:'absolute',top:28,right:28,zIndex:3,display:'flex',flexDirection:'column',gap:7 }}>
-        {COVER_ALERTS.map((a,i) => (
-          <div key={i} style={{ padding:'7px 14px',border:`1px solid ${a.color}28`,borderLeft:`2px solid ${a.color}`,background:'rgba(8,9,12,0.94)',color:a.color,fontSize:12,fontFamily:'Inter,sans-serif',backdropFilter:'blur(12px)',display:'flex',alignItems:'center',gap:8,animation:`slideIn 2.5s ${a.delay} both` }}>
-            <span style={{ width:5,height:5,borderRadius:'50%',background:a.color,display:'inline-block',animation:i===COVER_ALERTS.length-1?'none':'dot 1s infinite',flexShrink:0 }} />
-            {a.label}
+
+
+
+      <div style={{position:"relative",zIndex:2,textAlign:"center",userSelect:"none",display:"flex",flexDirection:"column",alignItems:"center",marginTop:-40}}>
+
+        {/* Logo canvas */}
+        <div style={{animation:"fadeUp 1s 0.2s both",position:"relative"}}>
+          <canvas
+            ref={logoCanvasRef}
+            onClick={handleClick}
+            style={{width:500,height:500,display:"block",cursor:phase==="idle"?"pointer":"default",filter:"drop-shadow(0 20px 80px rgba(0,120,255,0.6))"}}
+          />
+        </div>
+
+        {/* PATCH wordmark */}
+        <div style={{animation:"fadeUp 0.8s 0.5s both",marginTop:-30}}>
+          <div style={{
+            fontSize:"clamp(52px,8vw,96px)",
+            fontWeight:900,
+            letterSpacing:"0.12em",
+            lineHeight:1,
+            color:"#fff",
+            fontFamily:"Inter,-apple-system,sans-serif",
+            textTransform:"uppercase",
+            textShadow:"0 0 40px rgba(0,100,255,0.3)",
+          }}>
+            PATCH
           </div>
-        ))}
-      </div>
-      <div style={{ position:'relative',zIndex:2,textAlign:'center',userSelect:'none' }}>
-        <div style={{ animation:'fadeUp 0.8s 0.3s both',display:'flex',alignItems:'center',justifyContent:'center',gap:20,marginBottom:20 }}>
-          <svg viewBox="0 0 48 48" fill="none" style={{width:56,height:56}}>
-            <polygon points="24,2 46,12 46,36 24,46 2,36 2,12" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" fill="none"/>
-            <polygon points="24,2 46,12 24,24" fill="rgba(255,255,255,0.06)"/>
-            <polygon points="24,2 2,12 24,24" fill="rgba(255,255,255,0.03)"/>
-            <polygon points="24,24 46,12 46,36" fill="rgba(255,255,255,0.05)"/>
-            <polygon points="24,24 2,12 2,36" fill="rgba(255,255,255,0.02)"/>
-            <polygon points="24,24 46,36 24,46" fill="rgba(255,255,255,0.04)"/>
-            <polygon points="24,24 2,36 24,46" fill="rgba(255,255,255,0.06)"/>
-            <circle cx="24" cy="24" r="3" fill="rgba(255,255,255,0.6)"/>
-          </svg>
-          <div style={{ fontSize:'clamp(60px,10vw,130px)',fontWeight:800,letterSpacing:'-0.05em',lineHeight:0.88,color:'#fff',fontFamily:'Inter,-apple-system,sans-serif' }}>patch</div>
         </div>
-        <div style={{ animation:'fadeUp 0.8s 0.55s both',fontSize:12,color:'rgba(255,255,255,0.28)',letterSpacing:'0.14em',textTransform:'uppercase',fontFamily:'Inter,sans-serif' }}>
-          Autonomous Security · Nemotron Powered
+
+        {/* Subtitle */}
+        <div style={{animation:"fadeUp 0.8s 0.7s both",marginTop:10,fontSize:12,color:"rgba(160,180,220,0.6)",letterSpacing:"0.2em",textTransform:"uppercase",fontFamily:"Inter,sans-serif",fontWeight:500}}>
+          AI Security. Real-World Protection.
         </div>
-        <div style={{ animation:'fadeUp 0.8s 0.9s both',marginTop:36,display:'flex',alignItems:'center',gap:8,justifyContent:'center',fontSize:11,color:'rgba(255,255,255,0.16)',letterSpacing:'0.12em',textTransform:'uppercase' }}>
-          <span style={{ width:14,height:1,background:'rgba(255,255,255,0.1)' }} />
-          Click anywhere to enter
-          <span style={{ width:14,height:1,background:'rgba(255,255,255,0.1)' }} />
+
+        {/* Active badge */}
+        <div style={{animation:"fadeUp 0.8s 0.9s both",marginTop:20}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"6px 18px",border:"1px solid rgba(0,150,255,0.3)",borderRadius:999,background:"rgba(0,100,255,0.08)",backdropFilter:"blur(8px)"}}>
+            <span style={{width:6,height:6,borderRadius:"50%",background:"#3b82f6",boxShadow:"0 0 8px #3b82f6",display:"inline-block",animation:"scanBlink 1.2s infinite"}}/>
+            <span style={{fontSize:10,color:"rgba(100,180,255,0.8)",letterSpacing:"0.2em",fontFamily:"Inter,sans-serif",textTransform:"uppercase",fontWeight:600}}>
+              Threat Intelligence Active
+            </span>
+          </div>
         </div>
+
+        {/* Click hint */}
+        {ready && (
+          <div style={{animation:"fadeUp 0.8s 1.2s both",marginTop:24,fontSize:10,color:"rgba(255,255,255,0.15)",letterSpacing:"0.15em",textTransform:"uppercase",fontFamily:"Inter,sans-serif"}}>
+            Click logo to enter
+          </div>
+        )}
       </div>
     </div>
   );
@@ -149,57 +304,163 @@ function OverviewPage({ dashboardState, scanState = "idle", handleRunScan = () =
   const findings = dashboardState?.findings ?? [];
   const proposals = dashboardState?.fixProposals ?? [];
   const policyEvents = dashboardState?.policyEvents ?? [];
+  const [tick, setTick] = useState(0);
+  const [activityLog, setActivityLog] = useState([
+    { time: "now", msg: "Agent initialized", color: "#3b82f6" },
+    { time: "2s ago", msg: "Policy engine loaded", color: "#3b82f6" },
+    { time: "5s ago", msg: "Database connected · patch.db", color: "#22c55e" },
+    { time: "8s ago", msg: "NIM endpoint verified", color: "#22c55e" },
+    { time: "12s ago", msg: "Nemotron-Super-120B · ready", color: "#3b82f6" },
+  ]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (scanState === "scanning") {
+      setActivityLog(l => [{ time: "now", msg: "Running scan on demo-repo-fast/", color: "#f59e0b" }, ...l.slice(0,7)]);
+    }
+    if (scanState === "done") {
+      setActivityLog(l => [{ time: "now", msg: `Scan complete · ${findings.length} findings persisted`, color: "#22c55e" }, ...l.slice(0,7)]);
+    }
+  }, [scanState]);
+
+  const critCount = findings.filter(f=>f.severity==="critical").length;
+  const highCount = findings.filter(f=>f.severity==="high").length;
+  const medCount = findings.filter(f=>f.severity==="medium"||f.severity==="low").length;
+
   return (
     <div className="page">
+      <style>{`
+        @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+        @keyframes bar-fill{from{width:0}to{width:var(--w)}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes scan-line{0%{top:0}100%{top:100%}}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+      `}</style>
+
+      {/* Header */}
       <div className="page-header">
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:20}}>
           <div>
             <div className="page-title">Overview</div>
-            <div className="page-sub">High-level summary of the current scan and agent status.</div>
+            <div className="page-sub">Autonomous threat detection · Nemotron-Super-120B · Brev A100</div>
           </div>
-          <button
-            className="btn-primary"
-            onClick={handleRunScan}
-            disabled={scanState === "scanning"}
-            type="button"
-            style={{marginTop:4,whiteSpace:"nowrap",flexShrink:0}}
-          >
-            {scanState === "scanning" ? "Scanning..." : scanState === "done" ? "Scan Again" : "Run Scan"}
+          <button className="btn-primary" onClick={handleRunScan} disabled={scanState==="scanning"} type="button" style={{marginTop:4,whiteSpace:"nowrap",flexShrink:0}}>
+            {scanState==="scanning"?"Scanning...":scanState==="done"?"Scan Again":"Run Scan"}
           </button>
         </div>
-        {scanState === "scanning" && (
-          <div className="notice notice-load" style={{marginTop:12}}>
-            <strong>Scanning demo-repo/</strong>
-            <p>Nemotron is analyzing your codebase for vulnerabilities. This takes 30-60 seconds...</p>
-          </div>
-        )}
-        {scanState === "error" && (
-          <div className="notice notice-err" style={{marginTop:12}}>
-            <strong>Scan failed</strong>
-            <p>Check that the scanner is configured correctly on Brev.</p>
-          </div>
-        )}
-        {scanState === "done" && (
-          <div className="notice notice-ok" style={{marginTop:12}}>
-            <strong>Scan complete</strong>
-            <p>Findings refreshed from patch.db.</p>
-          </div>
-        )}
+        {scanState==="scanning"&&<div className="notice notice-load" style={{marginTop:12}}><strong>Scanning demo-repo-fast/</strong><p>Nemotron is analyzing your codebase. This takes about 2 minutes...</p></div>}
+        {scanState==="error"&&<div className="notice notice-err" style={{marginTop:12}}><strong>Scan failed</strong><p>Check that the scanner is configured correctly on Brev.</p></div>}
+        {scanState==="done"&&<div className="notice notice-ok" style={{marginTop:12}}><strong>Scan complete</strong><p>Findings refreshed from patch.db.</p></div>}
       </div>
-      <div className="stats" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
-        <div className="stat"><div className="stat-val red">{findings.length}</div><div className="stat-key">Total Findings</div></div>
-        <div className="stat"><div className="stat-val">{proposals.length}</div><div className="stat-key">Fix Proposals</div></div>
-        <div className="stat"><div className="stat-val">{policyEvents.filter(e=>e.verdict==='block').length}</div><div className="stat-key">Policy Blocks</div></div>
+
+      {/* Top stats row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {label:"Total Findings",val:findings.length,color:"#3b82f6",sub:"active threats"},
+          {label:"Fix Proposals",val:proposals.length,color:"#22c55e",sub:"ready to commit"},
+          {label:"Policy Blocks",val:policyEvents.filter(e=>e.verdict==="block").length,color:"#f59e0b",sub:"gated actions"},
+          {label:"Agent Status",val:"LIVE",color:"#22c55e",sub:"nemotron-super"},
+        ].map((s,i)=>(
+          <div key={i} className="stat" style={{animation:`fadeIn 0.4s ${i*0.1}s both`}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+              <span style={{width:6,height:6,borderRadius:"50%",background:s.color,boxShadow:`0 0 6px ${s.color}`,animation:"pulse-dot 2s infinite"}}/>
+              <span style={{fontSize:10,color:"var(--muted2)",letterSpacing:"0.08em",textTransform:"uppercase"}}>{s.label}</span>
+            </div>
+            <div style={{fontSize:32,fontWeight:800,color:s.color,lineHeight:1,fontFamily:"Inter,sans-serif"}}>{s.val}</div>
+            <div style={{fontSize:10,color:"var(--muted2)",marginTop:4}}>{s.sub}</div>
+          </div>
+        ))}
       </div>
-      <div className="section-label">All Findings</div>
-      {findings.map(f => (
-        <div className="card" key={f.finding_id} style={{borderColor:f.severity==='critical'?'rgba(255,60,60,0.2)':f.severity==='high'?'rgba(245,158,11,0.2)':'rgba(255,255,255,0.06)'}}>
-          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:6}}>
+
+      {/* Middle row: severity breakdown + activity log */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+
+        {/* Severity breakdown */}
+        <div className="card" style={{padding:20}}>
+          <div style={{fontSize:10,color:"var(--muted2)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:16}}>Severity Breakdown</div>
+          {[
+            {label:"Critical",count:critCount,total:Math.max(findings.length,1),color:"#ef4444"},
+            {label:"High",count:highCount,total:Math.max(findings.length,1),color:"#f59e0b"},
+            {label:"Medium / Low",count:medCount,total:Math.max(findings.length,1),color:"#3b82f6"},
+          ].map((b,i)=>(
+            <div key={i} style={{marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                <span style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{b.label}</span>
+                <span style={{fontSize:12,color:b.color,fontWeight:700}}>{b.count}</span>
+              </div>
+              <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:2,overflow:"hidden"}}>
+                <div style={{height:"100%",background:b.color,width:`${(b.count/b.total)*100}%`,borderRadius:2,transition:"width 1s ease",boxShadow:`0 0 8px ${b.color}`}}/>
+              </div>
+            </div>
+          ))}
+
+          {/* NIM usage */}
+          <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+            <div style={{fontSize:10,color:"var(--muted2)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:12}}>Model Pipeline</div>
+            {[
+              {label:"Detection",model:"Nemotron-Super-120B",status:"active"},
+              {label:"Fix Proposer",model:"Nemotron-Super-120B",status:"active"},
+              {label:"Policy Engine",model:"NemoClaw rules",status:"enforcing"},
+            ].map((m,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div>
+                  <div style={{fontSize:11,color:"rgba(255,255,255,0.6)"}}>{m.label}</div>
+                  <div style={{fontSize:10,color:"var(--muted2)",fontFamily:'"SF Mono",monospace'}}>{m.model}</div>
+                </div>
+                <span style={{fontSize:9,padding:"2px 8px",borderRadius:4,background:"rgba(34,197,94,0.1)",color:"#22c55e",border:"1px solid rgba(34,197,94,0.2)",letterSpacing:"0.08em"}}>{m.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Live activity log */}
+        <div className="card" style={{padding:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+            <span style={{width:6,height:6,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 6px #22c55e",animation:"pulse-dot 1s infinite"}}/>
+            <span style={{fontSize:10,color:"var(--muted2)",letterSpacing:"0.1em",textTransform:"uppercase"}}>Live Activity</span>
+          </div>
+          <div style={{fontFamily:'"SF Mono",ui-monospace,monospace',fontSize:11}}>
+            {activityLog.map((entry,i)=>(
+              <div key={i} style={{display:"flex",gap:10,marginBottom:10,opacity:1-i*0.12,animation:`fadeIn 0.3s ${i*0.05}s both`}}>
+                <span style={{color:"var(--muted2)",flexShrink:0,minWidth:50}}>{entry.time}</span>
+                <span style={{color:i===0?"rgba(255,255,255,0.9)":"rgba(255,255,255,0.5)"}}>{entry.msg}</span>
+                {i===0&&<span style={{width:6,height:6,borderRadius:"50%",background:entry.color,flexShrink:0,marginTop:3,animation:"blink 1s infinite"}}/>}
+              </div>
+            ))}
+          </div>
+          {/* Uptime */}
+          <div style={{marginTop:"auto",paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.05)",display:"flex",justifyContent:"space-between"}}>
+            <span style={{fontSize:10,color:"var(--muted2)"}}>Uptime</span>
+            <span style={{fontSize:10,color:"#22c55e",fontFamily:'"SF Mono",monospace'}}>
+              {String(Math.floor(tick/3600)).padStart(2,"0")}:{String(Math.floor((tick%3600)/60)).padStart(2,"0")}:{String(tick%60).padStart(2,"0")}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Findings list */}
+      <div className="section-label">Active Findings</div>
+      {findings.length===0&&(
+        <div className="card" style={{textAlign:"center",padding:32,color:"var(--muted2)"}}>
+          No findings yet — run a scan to detect vulnerabilities.
+        </div>
+      )}
+      {findings.map((f,i) => (
+        <div className="card" key={f.finding_id} style={{borderColor:f.severity==="critical"?"rgba(239,68,68,0.25)":f.severity==="high"?"rgba(245,158,11,0.2)":"rgba(59,130,246,0.15)",animation:`fadeIn 0.4s ${i*0.08}s both`}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
             <span className={`sev sev-${f.severity}`}>{f.severity}</span>
-            <span className="card-title">{f.category.replace(/_/g,' ')}</span>
+            <span className="card-title">{f.category.replace(/_/g," ")}</span>
+            <span style={{marginLeft:"auto",fontSize:10,color:"var(--muted2)",fontFamily:'"SF Mono",monospace'}}>{f.cwe}</span>
           </div>
           <div className="card-sub">{f.description}</div>
-          <div style={{fontSize:11,color:'var(--muted2)',fontFamily:'"SF Mono",ui-monospace,monospace'}}>{f.file}:{f.line_start} · {f.cwe} · confidence {Math.round(f.confidence*100)}%</div>
+          <div style={{display:"flex",gap:16,marginTop:8,fontSize:11,color:"var(--muted2)",fontFamily:'"SF Mono",monospace'}}>
+            <span>{f.file}:{f.line_start}</span>
+            <span>confidence {Math.round(f.confidence*100)}%</span>
+          </div>
         </div>
       ))}
     </div>
@@ -422,7 +683,7 @@ function ThreatIntelPage({ dashboardState, selectedProposalId, setSelectedPropos
         <div className="page-sub">Autonomous vulnerability detection and ranked fixes, under your control.</div>
       </div>
       <div className="stats">
-        {stats.map(s => <div className="stat" key={s.label}><div className={`stat-val ${s.cls}`}>{s.value}</div><div className="stat-key">{s.label}</div></div>)}
+        {stats.map(s => <div className="stat" key={s.label}><div className="stat-val">{s.value}</div><div className="stat-key">{s.label}</div></div>)}
       </div>
       <div className="section-label">Active Findings</div>
       {selectedFinding && (
@@ -499,7 +760,7 @@ const NAV_ITEMS = [
 export default function App() {
   const [showCover, setShowCover] = useState(true);
   const [scanState, setScanState] = useState("idle");
-  const [activePage, setActivePage] = useState("threat");
+  const [activePage, setActivePage] = useState("overview");
   const [dashboardState, setDashboardState] = useState(null);
   const [loadingState, setLoadingState] = useState("loading");
   const [loadError, setLoadError] = useState("");
